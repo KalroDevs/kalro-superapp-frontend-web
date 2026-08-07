@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { 
   faThLarge, 
@@ -18,15 +19,22 @@ import {
   faHeadset,
   faHorseHead,
   faUsers,
-  faStore
+  faStore,
+  faSignOutAlt,
+  faUserCircle,
+  faHeart,
+  faCog
 } from '@fortawesome/free-solid-svg-icons'
 import { useLanguage } from '../context/LanguageContext'
+import { useAuth } from '../context/AuthContext'
 import SearchModal from './SearchModal'
 
 const Header = ({ onStoreClick }) => {
   const { t, currentLanguage, toggleLanguage } = useLanguage()
+  const { isAuthenticated, user, logout } = useAuth()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [logoError, setLogoError] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   const handleLanguageChange = (lang) => {
     toggleLanguage(lang)
@@ -42,11 +50,28 @@ const Header = ({ onStoreClick }) => {
     document.body.style.overflow = ''
   }
 
+  const handleLogout = async (e) => {
+    e.preventDefault()
+    setIsDropdownOpen(false)
+    await logout()
+  }
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isDropdownOpen && !event.target.closest('.user-menu')) {
+        setIsDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isDropdownOpen])
+
   return (
     <>
       <header className="top">
         <div className="container row">
-          <a className="brand" href="/">
+          <Link className="brand" to="/">
             {!logoError ? (
               <img 
                 src="/images/logo.png" 
@@ -57,8 +82,8 @@ const Header = ({ onStoreClick }) => {
             ) : (
               <span className="logo">KALRO</span>
             )}
-            <span>{t('superapp')}  <small></small></span>
-          </a>
+            <span>KALRO <small>{t('superapp')}</small></span>
+          </Link>
           <span className="divider"></span>
 
           <ul className="mainnav">
@@ -106,8 +131,43 @@ const Header = ({ onStoreClick }) => {
             <a href="#" onClick={(e) => { e.preventDefault(); openSearch(); }}>
               <FontAwesomeIcon icon={faSearch} />
             </a>
-            <a href="/login">{t('signIn')}</a>
-            <span className="user"><FontAwesomeIcon icon={faUser} /></span>
+            
+            {isAuthenticated ? (
+              <div className="user-menu">
+                <span className="user" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+                  <FontAwesomeIcon icon={faUserCircle} />
+                </span>
+                {isDropdownOpen && (
+                  <div className="user-dropdown">
+                    <div className="user-dropdown-header">
+                      <FontAwesomeIcon icon={faUserCircle} className="user-dropdown-avatar" />
+                      <div>
+                        <strong>{user?.first_name || user?.username || 'User'}</strong>
+                        <small>{user?.email}</small>
+                      </div>
+                    </div>
+                    <Link to="/profile" onClick={() => setIsDropdownOpen(false)}>
+                      <FontAwesomeIcon icon={faUser} /> Profile
+                    </Link>
+                    <Link to="/favorites" onClick={() => setIsDropdownOpen(false)}>
+                      <FontAwesomeIcon icon={faHeart} /> Favorites
+                    </Link>
+                    <Link to="/settings" onClick={() => setIsDropdownOpen(false)}>
+                      <FontAwesomeIcon icon={faCog} /> Settings
+                    </Link>
+                    <div className="dropdown-divider"></div>
+                    <button onClick={handleLogout}>
+                      <FontAwesomeIcon icon={faSignOutAlt} /> Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <Link to="/login" className="sign-in-link">{t('signIn')}</Link>
+                <Link to="/register" className="btn-primary-small">Register</Link>
+              </>
+            )}
           </div>
         </div>
       </header>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { 
   faSearch, 
@@ -32,55 +32,37 @@ import {
   faVial,
   faDatabase,
   faStar,
-  faDownload
+  faDownload,
+  faClock,
+  faFire,
+  faTag,
+  faSpinner
 } from '@fortawesome/free-solid-svg-icons'
 import { useLanguage } from '../context/LanguageContext'
+import { useApi } from '../context/ApiContext'
+import './SearchModal.css'
 
-const SearchModal = ({ isOpen, onClose }) => {
+const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
   const { t } = useLanguage()
+  const { store, fetchWithErrorHandling } = useApi()
+  
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [recentSearches, setRecentSearches] = useState([])
-  const [popularSearches, setPopularSearches] = useState([
+  const [isSearching, setIsSearching] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [hasSearched, setHasSearched] = useState(false)
+  const inputRef = useRef(null)
+  const resultsRef = useRef(null)
+  const searchTimeoutRef = useRef(null)
+
+  // Popular searches
+  const popularSearches = [
     'Weather Advisory',
     'Crop Selector',
     'Market Prices',
     'AI Farm Advisor',
     'Soil Health'
-  ])
-  const inputRef = useRef(null)
-
-  // All products data for search
-  const allProducts = [
-    { id: 1, title: 'KALRO Selector', category: 'Advisory & AI', icon: faSeedling, iconBg: 'green', description: 'AI-powered crop and variety recommendation engine.' },
-    { id: 2, title: 'AI Farm Advisor', category: 'Advisory & AI', icon: faRobot, iconBg: 'blue', description: 'Personalized recommendations for crops, livestock, and soil.' },
-    { id: 3, title: 'Soil Health Recommender', category: 'Advisory & AI', icon: faTrowel, iconBg: 'brown', description: 'Nutrient, liming, and organic matter recommendations.' },
-    { id: 4, title: 'Crop Recommendation Engine', category: 'Advisory & AI', icon: faChartLine, iconBg: 'purple', description: 'Location-based crop suitability and variety selection.' },
-    { id: 5, title: 'Livestock Recommendation', category: 'Advisory & AI', icon: faHorseHead, iconBg: 'teal', description: 'Breed, feeding, and health recommendations for livestock.' },
-    { id: 6, title: 'Pasture Recommendation', category: 'Advisory & AI', icon: faLeaf, iconBg: 'orange', description: 'Optimal pasture and forage species for your region.' },
-    { id: 7, title: 'Weather Advisory', category: 'Climate & Weather', icon: faCloudSun, iconBg: 'cyan', description: 'Localized forecasts, seasonal outlooks, and alerts.' },
-    { id: 8, title: 'Kenya Agricultural Observatory', category: 'Climate & Weather', icon: faSatelliteDish, iconBg: 'blue', description: 'Real-time climate, drought, and environmental monitoring.' },
-    { id: 9, title: 'Seasonal Forecasts', category: 'Climate & Weather', icon: faCalendarAlt, iconBg: 'orange', description: 'Seasonal rainfall and temperature outlooks.' },
-    { id: 10, title: 'Drought Monitoring', category: 'Climate & Weather', icon: faExclamationTriangle, iconBg: 'red', description: 'Early warning and drought severity tracking.' },
-    { id: 11, title: 'Digital Soil Maps', category: 'Soil & Land', icon: faMap, iconBg: 'brown', description: 'High-resolution soil property and fertility maps.' },
-    { id: 12, title: 'Land Soil Crop Hub', category: 'Soil & Land', icon: faSeedling, iconBg: 'green', description: 'Integrated land, soil, and crop information platform.' },
-    { id: 13, title: 'Pest Identification AI', category: 'Crop, Livestock & Fish', icon: faBug, iconBg: 'orange', description: 'AI-powered pest identification and management.' },
-    { id: 14, title: 'Disease Identification AI', category: 'Crop, Livestock & Fish', icon: faDisease, iconBg: 'purple', description: 'Crop and livestock disease diagnosis using AI.' },
-    { id: 15, title: 'GAP Knowledge Hub', category: 'Knowledge & Extension', icon: faBook, iconBg: 'indigo', description: 'Good Agricultural Practices and extension content.' },
-    { id: 16, title: 'Kenya e-Extension Portal', category: 'Knowledge & Extension', icon: faChalkboardTeacher, iconBg: 'green', description: 'Digital extension services for farmers and officers.' },
-    { id: 17, title: 'Market Prices', category: 'Markets & Agribusiness', icon: faChartLine, iconBg: 'amber', description: 'Real-time commodity and input price information.' },
-    { id: 18, title: 'Ujuzi Link', category: 'Markets & Agribusiness', icon: faLink, iconBg: 'blue', description: 'Buyer-seller linkage and value chain platform.' },
-    { id: 19, title: 'Know Your Farmer (KYF)', category: 'Farmer Identity & DPI', icon: faIdCard, iconBg: 'cyan', description: 'Digital farmer identity and registration system.' },
-    { id: 20, title: 'API Gateway', category: 'Farmer Identity & DPI', icon: faPlug, iconBg: 'green', description: 'Open API infrastructure for interoperability.' },
-    { id: 21, title: 'Soil Laboratory Services', category: 'Lab & Diagnostics', icon: faMicroscope, iconBg: 'deep-purple', description: 'Online booking and sample tracking for soil testing.' },
-    { id: 22, title: 'LIMS', category: 'Lab & Diagnostics', icon: faVial, iconBg: 'blue', description: 'Laboratory Information Management System.' },
-    { id: 23, title: 'Research Data Repository', category: 'Research & Innovation', icon: faDatabase, iconBg: 'purple', description: 'Open access to agricultural research data.' },
-    { id: 24, title: 'IoT Sensor Hub', category: 'Precision & IoT', icon: faSatelliteDish, iconBg: 'green', description: 'Real-time sensor data for smart farming.' },
-    { id: 25, title: 'Credit Scoring', category: 'Financial Services', icon: faCoins, iconBg: 'amber', description: 'Farmer credit scoring and loan eligibility assessment.' },
-    { id: 26, title: 'Farm-to-Fork Traceability', category: 'Traceability & Supply', icon: faQrcode, iconBg: 'indigo', description: 'End-to-end supply chain traceability using QR.' },
-    { id: 27, title: 'Business Intelligence', category: 'Enterprise Services', icon: faChartPie, iconBg: 'deep-purple', description: 'Executive dashboards and analytics for KALRO.' },
-    { id: 28, title: 'KilimoSTAT', category: 'Data & AI Platform', icon: faCloud, iconBg: 'purple', description: 'National agricultural statistics and analytics.' },
-    { id: 29, title: 'GIS Platform', category: 'Data & AI Platform', icon: faMap, iconBg: 'teal', description: 'Geospatial data and mapping infrastructure.' }
   ]
 
   // Load recent searches from localStorage
@@ -88,75 +70,173 @@ const SearchModal = ({ isOpen, onClose }) => {
     if (isOpen) {
       const saved = localStorage.getItem('kalroRecentSearches')
       if (saved) {
-        setRecentSearches(JSON.parse(saved))
+        try {
+          setRecentSearches(JSON.parse(saved))
+        } catch {
+          setRecentSearches([])
+        }
       }
-      // Focus input when modal opens
+      
+      // Set initial query if provided
+      if (initialQuery) {
+        setSearchQuery(initialQuery)
+        setHasSearched(true)
+        // Trigger search after a small delay
+        setTimeout(() => {
+          if (initialQuery.trim()) {
+            performSearch(initialQuery)
+          }
+        }, 200)
+      } else {
+        setSearchQuery('')
+        setSearchResults([])
+        setHasSearched(false)
+      }
+      
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus()
         }
-      }, 100)
+      }, 150)
+      setSelectedIndex(-1)
     }
-  }, [isOpen])
+  }, [isOpen, initialQuery])
 
-  // Handle search
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
+  // Perform search function
+  const performSearch = async (query) => {
+    if (query.trim() === '') {
       setSearchResults([])
+      setIsSearching(false)
       return
     }
 
-    const query = searchQuery.toLowerCase().trim()
-    const results = allProducts.filter(product =>
-      product.title.toLowerCase().includes(query) ||
-      product.description.toLowerCase().includes(query) ||
-      product.category.toLowerCase().includes(query)
-    )
-    setSearchResults(results)
+    setIsSearching(true)
+    
+    try {
+      const result = await fetchWithErrorHandling(
+        () => store.searchProducts({ q: query.trim() }),
+        'Failed to search products'
+      )
+      
+      if (result.success && result.data) {
+        const products = result.data.results || result.data || []
+        setSearchResults(products)
+      } else {
+        setSearchResults([])
+      }
+    } catch (error) {
+      console.error('Search error:', error)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  // Handle search with debounce
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    if (searchQuery.trim() === '') {
+      setSearchResults([])
+      setIsSearching(false)
+      setHasSearched(false)
+      return
+    }
+
+    setIsSearching(true)
+    setHasSearched(true)
+    
+    searchTimeoutRef.current = setTimeout(async () => {
+      await performSearch(searchQuery)
+    }, 400)
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
   }, [searchQuery])
 
-  // Handle search submission
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isOpen) return
+      
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      
+      if (searchResults.length === 0) return
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedIndex(prev => (prev + 1) % searchResults.length)
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedIndex(prev => (prev - 1 + searchResults.length) % searchResults.length)
+      } else if (e.key === 'Enter' && selectedIndex >= 0) {
+        e.preventDefault()
+        const product = searchResults[selectedIndex]
+        if (product) {
+          handleResultClick(product)
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, searchResults, selectedIndex, onClose])
+
+  // Scroll selected result into view
+  useEffect(() => {
+    if (selectedIndex >= 0 && resultsRef.current) {
+      const items = resultsRef.current.querySelectorAll('.result-item')
+      if (items[selectedIndex]) {
+        items[selectedIndex].scrollIntoView({ block: 'nearest' })
+      }
+    }
+  }, [selectedIndex])
+
   const handleSearch = (query) => {
     if (query.trim() === '') return
     
-    // Save to recent searches
     const updatedRecent = [query, ...recentSearches.filter(s => s !== query)].slice(0, 10)
     setRecentSearches(updatedRecent)
     localStorage.setItem('kalroRecentSearches', JSON.stringify(updatedRecent))
     
-    // Close modal and navigate to store with search
     onClose()
-    // Navigate to store page with search query
-    window.location.href = `/?page=store&search=${encodeURIComponent(query)}`
+    setTimeout(() => {
+      window.location.href = `/?page=store&search=${encodeURIComponent(query)}`
+    }, 200)
   }
 
-  // Handle keyboard events
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch(searchQuery)
-    }
-    if (e.key === 'Escape') {
-      onClose()
-    }
+  const handleResultClick = (product) => {
+    onClose()
+    setTimeout(() => {
+      window.location.href = `/product/${product.slug || product.id}`
+    }, 200)
   }
 
-  // Clear search
   const clearSearch = () => {
     setSearchQuery('')
     setSearchResults([])
+    setSelectedIndex(-1)
+    setHasSearched(false)
     if (inputRef.current) {
       inputRef.current.focus()
     }
   }
 
-  // Remove recent search
-  const removeRecentSearch = (search) => {
+  const removeRecentSearch = (search, e) => {
+    e.stopPropagation()
     const updated = recentSearches.filter(s => s !== search)
     setRecentSearches(updated)
     localStorage.setItem('kalroRecentSearches', JSON.stringify(updated))
   }
 
-  // Get icon background color class
   const getIconBgClass = (bg) => {
     const classes = {
       'green': 'green',
@@ -189,7 +269,6 @@ const SearchModal = ({ isOpen, onClose }) => {
               placeholder="Search KALRO digital products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
               className="search-input"
               autoFocus
             />
@@ -198,7 +277,16 @@ const SearchModal = ({ isOpen, onClose }) => {
                 <FontAwesomeIcon icon={faTimes} />
               </button>
             )}
-            <button className="search-submit-btn" onClick={() => handleSearch(searchQuery)}>
+            {isSearching && (
+              <div className="search-loading">
+                <FontAwesomeIcon icon={faSpinner} spin />
+              </div>
+            )}
+            <button 
+              className="search-submit-btn" 
+              onClick={() => handleSearch(searchQuery)}
+              disabled={!searchQuery.trim() || isSearching}
+            >
               <FontAwesomeIcon icon={faSearch} />
             </button>
           </div>
@@ -208,29 +296,36 @@ const SearchModal = ({ isOpen, onClose }) => {
         </div>
 
         {/* Search Results */}
-        <div className="search-modal-body">
-          {searchQuery.trim() !== '' ? (
-            // Show results
+        <div className="search-modal-body" ref={resultsRef}>
+          {hasSearched && searchQuery.trim() !== '' ? (
             <div className="search-results">
-              {searchResults.length > 0 ? (
+              {isSearching ? (
+                <div className="search-loading-results">
+                  <FontAwesomeIcon icon={faSpinner} spin size="2x" />
+                  <p>Searching...</p>
+                </div>
+              ) : searchResults.length > 0 ? (
                 <>
                   <div className="results-header">
                     <span>{searchResults.length} results found</span>
                   </div>
                   <div className="results-grid">
-                    {searchResults.map(product => (
+                    {searchResults.map((product, index) => (
                       <div 
                         key={product.id} 
-                        className="result-item"
-                        onClick={() => handleSearch(product.title)}
+                        className={`result-item ${selectedIndex === index ? 'selected' : ''}`}
+                        onClick={() => handleResultClick(product)}
+                        onMouseEnter={() => setSelectedIndex(index)}
                       >
-                        <div className={`result-icon ${getIconBgClass(product.iconBg)}`}>
-                          <FontAwesomeIcon icon={product.icon} />
+                        <div className={`result-icon ${getIconBgClass(product.icon_bg || 'green')}`}>
+                          <FontAwesomeIcon icon={product.icon || faSeedling} />
                         </div>
                         <div className="result-info">
                           <h4>{product.title}</h4>
-                          <span className="result-category">{product.category}</span>
-                          <p>{product.description}</p>
+                          <span className="result-category">
+                            {product.category_name || product.category || 'Product'}
+                          </span>
+                          <p>{product.short_description || product.description}</p>
                         </div>
                         <FontAwesomeIcon icon={faArrowRight} className="result-arrow" />
                       </div>
@@ -243,18 +338,17 @@ const SearchModal = ({ isOpen, onClose }) => {
                     <FontAwesomeIcon icon={faSearch} />
                   </div>
                   <h3>No results found</h3>
-                  <p>Try adjusting your search terms or browse our categories</p>
+                  <p>Try adjusting your search terms</p>
                 </div>
               )}
             </div>
           ) : (
-            // Show suggestions
             <div className="search-suggestions">
               {/* Recent Searches */}
               {recentSearches.length > 0 && (
                 <div className="suggestion-section">
                   <div className="suggestion-header">
-                    <span>Recent Searches</span>
+                    <span><FontAwesomeIcon icon={faClock} /> Recent Searches</span>
                     <button 
                       className="clear-all-btn"
                       onClick={() => {
@@ -270,16 +364,16 @@ const SearchModal = ({ isOpen, onClose }) => {
                       <div 
                         key={index} 
                         className="recent-search-item"
-                        onClick={() => handleSearch(search)}
+                        onClick={() => {
+                          setSearchQuery(search)
+                          handleSearch(search)
+                        }}
                       >
                         <FontAwesomeIcon icon={faSearch} className="recent-icon" />
                         <span>{search}</span>
                         <button 
                           className="remove-search"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            removeRecentSearch(search)
-                          }}
+                          onClick={(e) => removeRecentSearch(search, e)}
                         >
                           <FontAwesomeIcon icon={faTimes} />
                         </button>
@@ -292,7 +386,7 @@ const SearchModal = ({ isOpen, onClose }) => {
               {/* Popular Searches */}
               <div className="suggestion-section">
                 <div className="suggestion-header">
-                  <span>Popular Searches</span>
+                  <span><FontAwesomeIcon icon={faFire} /> Popular Searches</span>
                 </div>
                 <div className="popular-searches">
                   {popularSearches.map((search, index) => (
@@ -315,28 +409,56 @@ const SearchModal = ({ isOpen, onClose }) => {
               {/* Quick Categories */}
               <div className="suggestion-section">
                 <div className="suggestion-header">
-                  <span>Browse Categories</span>
+                  <span><FontAwesomeIcon icon={faTag} /> Browse Categories</span>
                 </div>
                 <div className="quick-categories">
-                  <button className="category-chip" onClick={() => handleSearch('Advisory & AI')}>
+                  <button 
+                    className="category-chip" 
+                    onClick={() => {
+                      setSearchQuery('Advisory & AI')
+                      handleSearch('Advisory & AI')
+                    }}
+                  >
                     <FontAwesomeIcon icon={faRobot} /> Advisory & AI
                   </button>
-                  <button className="category-chip" onClick={() => handleSearch('Climate & Weather')}>
+                  <button 
+                    className="category-chip"
+                    onClick={() => {
+                      setSearchQuery('Climate & Weather')
+                      handleSearch('Climate & Weather')
+                    }}
+                  >
                     <FontAwesomeIcon icon={faCloudSun} /> Climate & Weather
                   </button>
-                  <button className="category-chip" onClick={() => handleSearch('Soil & Land')}>
-                    <FontAwesomeIcon icon={faTrowel} /> Soil & Land
-                  </button>
-                  <button className="category-chip" onClick={() => handleSearch('Markets & Agribusiness')}>
+                  <button 
+                    className="category-chip"
+                    onClick={() => {
+                      setSearchQuery('Markets & Agribusiness')
+                      handleSearch('Markets & Agribusiness')
+                    }}
+                  >
                     <FontAwesomeIcon icon={faStore} /> Markets
                   </button>
-                  <button className="category-chip" onClick={() => handleSearch('Data & AI Platform')}>
+                  <button 
+                    className="category-chip"
+                    onClick={() => {
+                      setSearchQuery('Data & AI Platform')
+                      handleSearch('Data & AI Platform')
+                    }}
+                  >
                     <FontAwesomeIcon icon={faCloud} /> Data & AI
                   </button>
                 </div>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Footer */}
+        <div className="search-modal-footer">
+          <span className="search-hint">
+            <kbd>↑</kbd> <kbd>↓</kbd> navigate &nbsp;·&nbsp; <kbd>Enter</kbd> select &nbsp;·&nbsp; <kbd>Esc</kbd> close
+          </span>
         </div>
       </div>
     </div>

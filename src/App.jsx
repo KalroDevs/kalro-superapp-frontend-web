@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
+import { ApiProvider } from './context/ApiContext'
 import AccessibilityBar from './components/AccessibilityBar'
 import Header from './components/Header'
 import SubNav from './components/SubNav'
@@ -15,9 +17,13 @@ import Store from './pages/Store'
 import ProductDetail from './pages/ProductDetail'
 import AuthPage from './pages/AuthPage'
 import { useLanguage } from './context/LanguageContext'
+import { useAuth } from './context/AuthContext'
+import HeroSearch from './components/HeroSearch'
+
 
 function AppContent() {
   const { currentLanguage } = useLanguage()
+  const { isAuthenticated, user } = useAuth()
   const location = useLocation()
   const [currentPage, setCurrentPage] = useState('home')
 
@@ -45,7 +51,7 @@ function AppContent() {
   return (
     <div>
       <AccessibilityBar />
-      <Header onStoreClick={navigateToStore} />
+      <Header onStoreClick={navigateToStore} isAuthenticated={isAuthenticated} user={user} />
       <SubNav onStoreClick={navigateToStore} />
       
       {isAuthPage ? (
@@ -55,18 +61,20 @@ function AppContent() {
         </Routes>
       ) : isProductPage ? (
         <Routes>
-          <Route path="/product/:id" element={<ProductDetail />} />
+          {/* <Route path="/product/:id" element={<ProductDetail />} /> */}
+          <Route path="/product/:slug" element={<ProductDetail />} />
         </Routes>
       ) : currentPage === 'store' ? (
         <Store />
       ) : (
         <main>
           <Hero />
-          <RoleTabs />
-          <HowItWorks />
-          <Updates />
-          <Services />
-          <CTA />
+          {/* <RoleTabs /> */}
+          <HeroSearch />
+          {/* <HowItWorks /> */}
+          {/* <Updates /> */}
+          {/* <Services /> */}
+          {/* <CTA /> */}
           <FAQ />
         </main>
       )}
@@ -79,7 +87,11 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <ApiProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ApiProvider>
     </Router>
   )
 }

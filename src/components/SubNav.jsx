@@ -73,8 +73,8 @@ const SubNav = ({ onStoreClick }) => {
           </li>
         </ul>
         <div className="actions">
-          <a className="btn outline" href="#services">{t('exploreServices')}</a>
-          <a className="btn primary" href="#start"><FontAwesomeIcon icon={faArrowRight} /> {t('startNow')}</a>
+          <a className="btn outline" href="#s" onClick={handleStoreClick}>{t('exploreServices')}</a>
+          <a className="btn primary" href="#" onClick={handleStoreClick}><FontAwesomeIcon icon={faArrowRight} /> {t('startNow')}</a>
         </div>
       </div>
     </nav>

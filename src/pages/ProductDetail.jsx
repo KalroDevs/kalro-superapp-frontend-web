@@ -1,34 +1,39 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { 
-  faRobot, faSeedling, faCloudSun, faTrowel, faBug, faBook, faStore,
-  faIdCard, faMicroscope, faLightbulb, faSatelliteDish, faCoins,
-  faQrcode, faChartPie, faCloud, faMap, faChartLine, faHorseHead,
-  faLeaf, faCalendarAlt, faExclamationTriangle, faDisease,
-  faChalkboardTeacher, faLink as faLinkIcon, faPlug, faVial, faDatabase,
-  faStar, faDownload, faUser, faGlobe, faTag, faShieldAlt,
+  faStore, faBook, faStar, faDownload, faGlobe, faShieldAlt,
   faHeart, faPlay, faRocket, faInfoCircle, faCheckCircle,
   faExclamationCircle, faSpinner, faTimes, faArrowRight,
-  faMobileAlt, faDesktop, faThumbsUp, faReply, faPaperPlane,
-  faComments, faCode, faThLarge, faUserCircle, faSearch,
-  faBriefcase, faThermometerHalf, faTruck, faClipboardList,
-  faVideo, faShareAlt, faTree, faUsers, faFileAlt, faClipboard,
-  faTractor, faLink, faArrowLeft, faImage, faChevronLeft, faChevronRight,
-  faExpand, faCompress, faPlayCircle
+  faThumbsUp, faReply, faPaperPlane, faComments, faUserCircle,
+  faChevronLeft, faChevronRight, faHeadset, faStar as faStarSolid,
+  faImage
 } from '@fortawesome/free-solid-svg-icons'
-import { 
-  faAndroid, faApple, faWindows
-} from '@fortawesome/free-brands-svg-icons'
+import { faAndroid, faApple, faWindows } from '@fortawesome/free-brands-svg-icons'
+
 import { useLanguage } from '../context/LanguageContext'
+import { useAuth } from '../context/AuthContext'
+import { useApi } from '../context/ApiContext'
 import './ProductDetail.css'
 
+// Fallback image when no screenshots are available
+const FALLBACK_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"%3E%3Crect width="600" height="400" fill="%23009640"/%3E%3Ctext x="300" y="190" font-family="Arial" font-size="28" fill="white" text-anchor="middle" dominant-baseline="middle"%3EKALRO%3C/text%3E%3Ctext x="300" y="225" font-family="Arial" font-size="16" fill="%23dff6dd" text-anchor="middle" dominant-baseline="middle"%3EApp Screenshot%3C/text%3E%3C/svg%3E'
+
+// Fallback image for thumbnails
+const FALLBACK_THUMBNAIL = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="80" viewBox="0 0 100 80"%3E%3Crect width="100" height="80" fill="%23cccccc"/%3E%3Ctext x="50" y="45" font-family="Arial" font-size="12" fill="%23666666" text-anchor="middle"%3EImage%3C/text%3E%3C/svg%3E'
+
+const DEMO_VIDEO_FALLBACK = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
+
 const ProductDetail = () => {
-  const { id } = useParams()
-  const { t, currentLanguage } = useLanguage()
-  
+  const { slug } = useParams()
+  const { t } = useLanguage()
+  const { isAuthenticated } = useAuth()
+  const { store, fetchWithErrorHandling } = useApi()
+
+  // Primary Component State
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [selectedRating, setSelectedRating] = useState(0)
   const [hoverRating, setHoverRating] = useState(0)
   const [comments, setComments] = useState([])
@@ -37,357 +42,166 @@ const ProductDetail = () => {
   const [launchStatus, setLaunchStatus] = useState({ type: '', message: '', show: false })
   const [toasts, setToasts] = useState([])
   const [isLaunching, setIsLaunching] = useState(false)
-  
-  // Image Gallery State
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  
-  // Video Modal State
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
+  const [imageErrors, setImageErrors] = useState({})
 
-  // Complete product database
-  const productDatabase = {
-    1: {
-      id: 1,
-      title: 'KALRO Selector',
-      category: 'Advisory & AI',
-      icon: faSeedling,
-      iconBg: 'green',
-      description: 'AI-powered crop and variety recommendation engine.',
-      longDescription: 'The KALRO Selector uses advanced machine learning algorithms to recommend the best crop varieties for your specific location, soil type, and climate conditions. Built on decades of agricultural research from KALRO scientists.',
-      rating: 4.8,
-      reviews: 3247,
-      downloads: '8.5K+',
-      users: '5,200+',
-      version: '2.3.0',
-      lastUpdated: 'June 2026',
-      languages: 'English, Kiswahili',
-      security: 'SSL, GDPR compliant',
-      badges: ['Popular', 'AI-Powered'],
-      features: [
-        { icon: faSeedling, title: 'Crop Selection', description: 'Choose from hundreds of crop varieties based on your location and conditions.' },
-        { icon: faCloudSun, title: 'Climate Matching', description: 'Find crops that thrive in your specific climate zone.' },
-        { icon: faMap, title: 'Location Intelligence', description: 'Uses precise location data for accurate recommendations.' },
-        { icon: faChartLine, title: 'Yield Prediction', description: 'Estimated yield forecasts for recommended varieties.' }
-      ],
-      specs: [
-        { label: 'Platform', value: 'Web, Android, iOS' },
-        { label: 'AI Models', value: 'Random Forest, Neural Networks' },
-        { label: 'Data Sources', value: 'KALRO, Weather API, Soil Maps' },
-        { label: 'Integration', value: 'KAOP, LSC Hub' },
-        { label: 'Security', value: 'OAuth 2.0, TLS 1.3' }
-      ],
-      platforms: ['Web App', 'Android', 'iOS', 'Desktop'],
-      availablePlatforms: ['Web App', 'Android', 'iOS'],
-      related: [2, 7, 11]
-    },
-    2: {
-      id: 2,
-      title: 'AI Farm Advisor',
-      category: 'Advisory & AI',
-      icon: faRobot,
-      iconBg: 'blue',
-      description: 'Personalized recommendations for crops, livestock, and soil.',
-      longDescription: 'Get personalized, AI-driven recommendations for crops, livestock, and soil management. The AI Farm Advisor combines KALRO research with real-time data to deliver actionable insights for better farming decisions. Trusted by over 12,000 farmers across Kenya.',
-      rating: 4.9,
-      reviews: 2847,
-      downloads: '12K+',
-      users: '12,000+',
-      version: '2.4.1',
-      lastUpdated: 'June 2026',
-      languages: 'English, Kiswahili',
-      security: 'SSL, GDPR compliant',
-      badges: ['Featured', 'AI-Powered', 'Secure'],
-      features: [
-        { icon: faSeedling, title: 'Crop Recommendations', description: 'Get variety and crop suitability recommendations based on your location, soil, and climate.' },
-        { icon: faHorseHead, title: 'Livestock Advisory', description: 'Receive breed, feeding, and health recommendations tailored to your livestock system.' },
-        { icon: faTrowel, title: 'Soil Health Insights', description: 'Nutrient management, liming, and organic matter recommendations for your fields.' },
-        { icon: faCloudSun, title: 'Weather Integration', description: 'Real-time weather data integrated into recommendations for planting and operations.' },
-        { icon: faRobot, title: 'AI-Powered Insights', description: 'Machine learning models trained on KALRO research and local agricultural data.' },
-        { icon: faMobileAlt, title: 'Mobile & Web Access', description: 'Available on Android, iOS, and web - access your farm data anywhere.' }
-      ],
-      specs: [
-        { label: 'Platform', value: 'Web, Android, iOS' },
-        { label: 'API', value: 'RESTful, GraphQL' },
-        { label: 'Data sources', value: 'KALRO, Weather API, Soil Maps' },
-        { label: 'AI Models', value: 'Random Forest, XGBoost, LSTM' },
-        { label: 'Integration', value: 'KAOP, LSC Hub, ONA' },
-        { label: 'Language support', value: 'English, Kiswahili' },
-        { label: 'Security', value: 'OAuth 2.0, TLS 1.3' },
-        { label: 'Support', value: 'Help desk, AI chatbot, Email' }
-      ],
-      platforms: ['Web App', 'Android', 'iOS'],
-      availablePlatforms: ['Web App', 'Android', 'iOS'],
-      related: [1, 3, 7]
-    },
-    3: {
-      id: 3,
-      title: 'Soil Health Recommender',
-      category: 'Advisory & AI',
-      icon: faTrowel,
-      iconBg: 'brown',
-      description: 'Nutrient, liming, and organic matter recommendations.',
-      longDescription: 'The Soil Health Recommender provides comprehensive soil management recommendations including nutrient application, liming requirements, and organic matter management for optimal crop production.',
-      rating: 4.6,
-      reviews: 2156,
-      downloads: '7.1K+',
-      users: '4,800+',
-      version: '1.8.2',
-      lastUpdated: 'May 2026',
-      languages: 'English, Kiswahili',
-      security: 'SSL, GDPR compliant',
-      badges: ['Popular'],
-      features: [
-        { icon: faTrowel, title: 'Nutrient Recommendations', description: 'Precise fertilizer recommendations based on soil test results.' },
-        { icon: faLeaf, title: 'Organic Matter Management', description: 'Guidance on building and maintaining soil organic matter.' },
-        { icon: faMap, title: 'Soil Mapping', description: 'Visualize soil properties across your farm.' },
-        { icon: faChartLine, title: 'Yield Optimization', description: 'Maximize yields through optimal soil health.' }
-      ],
-      specs: [
-        { label: 'Platform', value: 'Web, Android' },
-        { label: 'Data Sources', value: 'Soil Labs, KALRO Research' },
-        { label: 'Integration', value: 'LIMS, KAOP' },
-        { label: 'Security', value: 'OAuth 2.0, TLS 1.3' }
-      ],
-      platforms: ['Web App', 'Android'],
-      availablePlatforms: ['Web App', 'Android'],
-      related: [2, 11, 21]
-    },
-    4: {
-      id: 4,
-      title: 'Crop Recommendation Engine',
-      category: 'Advisory & AI',
-      icon: faChartLine,
-      iconBg: 'purple',
-      description: 'Location-based crop suitability and variety selection.',
-      longDescription: 'The Crop Recommendation Engine uses location data to recommend the most suitable crops and varieties for your specific area. It considers climate, soil type, and market demand to provide optimal recommendations.',
-      rating: 4.7,
-      reviews: 1843,
-      downloads: '6.3K+',
-      users: '4,100+',
-      version: '2.1.0',
-      lastUpdated: 'May 2026',
-      languages: 'English, Kiswahili',
-      security: 'SSL, GDPR compliant',
-      badges: ['Popular'],
-      features: [
-        { icon: faMap, title: 'Location-Based Selection', description: 'Crop recommendations based on GPS coordinates.' },
-        { icon: faSeedling, title: 'Variety Database', description: 'Access to hundreds of crop varieties.' },
-        { icon: faCloudSun, title: 'Climate Analysis', description: 'Temperature and rainfall suitability.' },
-        { icon: faStore, title: 'Market Demand', description: 'Recommendations based on market trends.' }
-      ],
-      specs: [
-        { label: 'Platform', value: 'Web, Android' },
-        { label: 'AI Models', value: 'Decision Trees, Random Forest' },
-        { label: 'Data Sources', value: 'KALRO, Meteorological Data' },
-        { label: 'Integration', value: 'KAOP' }
-      ],
-      platforms: ['Web App', 'Android'],
-      availablePlatforms: ['Web App', 'Android'],
-      related: [1, 2, 7]
-    },
-    5: {
-      id: 5,
-      title: 'Livestock Recommendation',
-      category: 'Advisory & AI',
-      icon: faHorseHead,
-      iconBg: 'teal',
-      description: 'Breed, feeding, and health recommendations for livestock.',
-      longDescription: 'The Livestock Recommendation tool helps farmers select the best breeds, create optimal feeding plans, and manage animal health for improved productivity.',
-      rating: 4.5,
-      reviews: 1567,
-      downloads: '4.2K+',
-      users: '2,800+',
-      version: '1.5.0',
-      lastUpdated: 'April 2026',
-      languages: 'English, Kiswahili',
-      security: 'SSL, GDPR compliant',
-      badges: [],
-      features: [
-        { icon: faHorseHead, title: 'Breed Selection', description: 'Optimal livestock breeds for your region.' },
-        { icon: faLeaf, title: 'Feeding Plans', description: 'Customized feeding schedules and nutrition.' },
-        { icon: faHeart, title: 'Health Monitoring', description: 'Disease prevention and treatment recommendations.' },
-        { icon: faTree, title: 'Pasture Management', description: 'Optimal grazing patterns.' }
-      ],
-      specs: [
-        { label: 'Platform', value: 'Web, Android, iOS' },
-        { label: 'Data Sources', value: 'KALRO Research, Veterinary Data' },
-        { label: 'Integration', value: 'KAOP' }
-      ],
-      platforms: ['Web App', 'Android', 'iOS'],
-      availablePlatforms: ['Web App', 'Android', 'iOS'],
-      related: [2, 6, 25]
-    },
-    6: {
-      id: 6,
-      title: 'Pasture Recommendation',
-      category: 'Advisory & AI',
-      icon: faLeaf,
-      iconBg: 'orange',
-      description: 'Optimal pasture and forage species for your region.',
-      longDescription: 'The Pasture Recommendation tool helps farmers select the best pasture and forage species for their specific region, soil type, and climate conditions.',
-      rating: 4.3,
-      reviews: 1234,
-      downloads: '2.8K+',
-      users: '1,900+',
-      version: '1.2.0',
-      lastUpdated: 'April 2026',
-      languages: 'English, Kiswahili',
-      security: 'SSL, GDPR compliant',
-      badges: [],
-      features: [
-        { icon: faSeedling, title: 'Species Selection', description: 'Best pasture varieties for your soil and climate.' },
-        { icon: faCalendarAlt, title: 'Seeding Guide', description: 'Optimal planting times and methods.' },
-        { icon: faChartLine, title: 'Management Plans', description: 'Grazing rotation and maintenance.' },
-        { icon: faCloudSun, title: 'Yield Optimization', description: 'Maximize forage production.' }
-      ],
-      specs: [
-        { label: 'Platform', value: 'Web, Android' },
-        { label: 'Data Sources', value: 'KALRO, Agricultural Research' }
-      ],
-      platforms: ['Web App', 'Android'],
-      availablePlatforms: ['Web App', 'Android'],
-      related: [5, 2, 11]
-    },
-    7: {
-      id: 7,
-      title: 'Weather Advisory',
-      category: 'Climate & Weather',
-      icon: faCloudSun,
-      iconBg: 'cyan',
-      description: 'Localized forecasts, seasonal outlooks, and alerts.',
-      longDescription: 'The Weather Advisory provides localized weather forecasts, seasonal outlooks, and severe weather alerts to help farmers make informed decisions about planting, harvesting, and farm operations.',
-      rating: 4.9,
-      reviews: 3421,
-      downloads: '22K+',
-      users: '18,000+',
-      version: '3.0.1',
-      lastUpdated: 'June 2026',
-      languages: 'English, Kiswahili',
-      security: 'SSL, GDPR compliant',
-      badges: ['Top', 'Featured'],
-      features: [
-        { icon: faCloudSun, title: 'Local Forecasts', description: 'Precise weather predictions for your location.' },
-        { icon: faCalendarAlt, title: 'Seasonal Outlooks', description: 'Long-term climate patterns.' },
-        { icon: faExclamationTriangle, title: 'Alert System', description: 'Severe weather warnings.' },
-        { icon: faSeedling, title: 'Crop Planning', description: 'Weather-based planting and harvesting advice.' }
-      ],
-      specs: [
-        { label: 'Platform', value: 'Web, Android, iOS' },
-        { label: 'Data Sources', value: 'Meteorological Services, Satellite Data' },
-        { label: 'Integration', value: 'KAOP' }
-      ],
-      platforms: ['Web App', 'Android', 'iOS'],
-      availablePlatforms: ['Web App', 'Android', 'iOS'],
-      related: [8, 9, 2]
-    },
-    8: {
-      id: 8,
-      title: 'Kenya Agricultural Observatory',
-      category: 'Climate & Weather',
-      icon: faSatelliteDish,
-      iconBg: 'blue',
-      description: 'Real-time climate, drought, and environmental monitoring.',
-      longDescription: 'The Kenya Agricultural Observatory provides real-time monitoring of climate, drought conditions, and environmental factors affecting agriculture across Kenya.',
-      rating: 4.7,
-      reviews: 2456,
-      downloads: '15K+',
-      users: '11,000+',
-      version: '2.2.0',
-      lastUpdated: 'May 2026',
-      languages: 'English, Kiswahili',
-      security: 'SSL, GDPR compliant',
-      badges: ['Featured'],
-      features: [
-        { icon: faSatelliteDish, title: 'Real-time Monitoring', description: 'Live climate data.' },
-        { icon: faExclamationTriangle, title: 'Drought Tracking', description: 'Severity and impact assessment.' },
-        { icon: faMap, title: 'Environmental Data', description: 'Land use, vegetation, water resources.' },
-        { icon: faChartLine, title: 'Predictive Analytics', description: 'Future climate scenarios.' }
-      ],
-      specs: [
-        { label: 'Platform', value: 'Web, Android' },
-        { label: 'Data Sources', value: 'Satellite, Weather Stations' },
-        { label: 'AI Models', value: 'Time Series Analysis' }
-      ],
-      platforms: ['Web App', 'Android'],
-      availablePlatforms: ['Web App', 'Android'],
-      related: [7, 9, 10]
-    }
+  // Track active timers for cleanup
+  const activeTimers = useRef(new Set())
+
+  const safeSetTimeout = (callback, delay) => {
+    const timerId = setTimeout(() => {
+      activeTimers.current.delete(timerId)
+      callback()
+    }, delay)
+    activeTimers.current.add(timerId)
+    return timerId
   }
 
-  // Initial comments
-  const initialComments = [
-    {
-      id: 1,
-      author: 'Grace Wanjiru',
-      date: '2 days ago',
-      rating: 5,
-      text: 'This app has transformed how I manage my farm. The recommendations are spot-on and the interface is incredibly useful. Highly recommend to all farmers!',
-      likes: 12
-    },
-    {
-      id: 2,
-      author: 'Dr. Peter Ochieng',
-      date: '1 week ago',
-      rating: 4.5,
-      text: 'As an extension officer, this tool has been invaluable. The AI recommendations are based on solid research and the interface is very intuitive. My farmers love it!',
-      likes: 8
-    },
-    {
-      id: 3,
-      author: 'Sarah Muthoni',
-      date: '2 weeks ago',
-      rating: 5,
-      text: 'The soil health recommendations have been a game-changer for my farm. I\'ve seen a noticeable improvement in crop yields since I started following the advice. Thank you KALRO!',
-      likes: 15
-    }
-  ]
-
-  // Sample gallery images
-  const galleryImages = [
-    { id: 1, type: 'image', url: 'https://via.placeholder.com/600x400/009640/ffffff?text=KALRO+App+Screenshot+1', alt: 'App Screenshot 1' },
-    { id: 2, type: 'image', url: 'https://via.placeholder.com/600x400/0067b8/ffffff?text=KALRO+App+Screenshot+2', alt: 'App Screenshot 2' },
-    { id: 3, type: 'image', url: 'https://via.placeholder.com/600x400/8B5A2B/ffffff?text=KALRO+App+Screenshot+3', alt: 'App Screenshot 3' },
-    { id: 4, type: 'image', url: 'https://via.placeholder.com/600x400/5c2d91/ffffff?text=KALRO+App+Screenshot+4', alt: 'App Screenshot 4' },
-    { id: 5, type: 'video', url: 'https://via.placeholder.com/600x400/333333/ffffff?text=KALRO+Video+Preview', alt: 'Video Preview' },
-  ]
-
-  // Demo video URL (sample - replace with actual video)
-  const demoVideoUrl = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
-
+  // Cleanup all timers on unmount
   useEffect(() => {
-    const productData = productDatabase[id]
-    if (productData) {
-      setProduct(productData)
-      setComments(initialComments)
+    return () => {
+      activeTimers.current.forEach((id) => clearTimeout(id))
+      activeTimers.current.clear()
     }
-    setLoading(false)
+  }, [])
 
-    const saved = localStorage.getItem(`kalro_saved_${id}`)
-    if (saved === 'true') {
-      setIsSaved(true)
+  // Lock body scroll when video modal is active
+  useEffect(() => {
+    if (isVideoModalOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
     }
-  }, [id])
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isVideoModalOpen])
 
-  const handleSave = () => {
-    const newState = !isSaved
-    setIsSaved(newState)
-    localStorage.setItem(`kalro_saved_${id}`, newState.toString())
-    showToast(
-      newState ? 'Product saved to favorites' : 'Removed from favorites',
-      newState ? 'success' : 'info'
-    )
-  }
-
-  const showToast = (message, type = 'info', duration = 4000) => {
-    const newToast = { id: Date.now(), message, type, duration }
-    setToasts(prev => [...prev, newToast])
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== newToast.id))
+  // Toast Notification Handler
+  const showToast = useCallback((message, type = 'info', duration = 4000) => {
+    const id = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+    const newToast = { id, message, type, duration }
+    
+    setToasts((prev) => [...prev, newToast])
+    safeSetTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
     }, duration)
-  }
+  }, [])
 
   const removeToast = (id) => {
-    setToasts(prev => prev.filter(t => t.id !== id))
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  // Handle image error
+  const handleImageError = (imageId) => {
+    setImageErrors(prev => ({ ...prev, [imageId]: true }))
+  }
+
+  // Get image URL with fallback
+  const getImageUrl = (image, isThumbnail = false) => {
+    if (!image) return isThumbnail ? FALLBACK_THUMBNAIL : FALLBACK_IMAGE
+    if (imageErrors[image.id]) {
+      return isThumbnail ? FALLBACK_THUMBNAIL : FALLBACK_IMAGE
+    }
+    // Use image_url if available, otherwise use the image field
+    return image.image_url || image.image || (isThumbnail ? FALLBACK_THUMBNAIL : FALLBACK_IMAGE)
+  }
+
+  // Get screenshots from product
+  const getScreenshots = (product) => {
+    if (!product) return []
+    if (product.screenshots && product.screenshots.length > 0) {
+      return product.screenshots
+    }
+    // If no screenshots, return empty array (will show placeholder)
+    return []
+  }
+
+  // Fetch Product Data
+  useEffect(() => {
+    let isMounted = true
+
+    const fetchProduct = async () => {
+      if (!slug) {
+        if (isMounted) {
+          setError('No product slug provided')
+          setLoading(false)
+        }
+        return
+      }
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const result = await fetchWithErrorHandling(
+          () => store.getProductBySlug(slug),
+          'Failed to load product details'
+        )
+
+        if (!isMounted) return
+
+        if (result?.success && result?.data) {
+          setProduct(result.data)
+          setCurrentImageIndex(0) // Reset image index when new product loads
+
+          const saved = localStorage.getItem(`kalro_saved_${result.data.id}`)
+          setIsSaved(saved === 'true')
+
+          const reviewsResult = await fetchWithErrorHandling(
+            () => store.getProductReviews(slug),
+            'Failed to load reviews'
+          )
+
+          if (isMounted && reviewsResult?.success && reviewsResult?.data) {
+            const reviewsData = Array.isArray(reviewsResult.data)
+              ? reviewsResult.data
+              : reviewsResult.data.results || []
+            setComments(reviewsData)
+          }
+        } else {
+          setError(result?.error || 'Product not found')
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError('Unable to load product details. Please refresh the page.')
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    fetchProduct()
+
+    return () => {
+      isMounted = false
+    }
+  }, [slug, fetchWithErrorHandling, store])
+
+  // Handlers
+  const handleSave = async () => {
+    if (!isAuthenticated) {
+      showToast('Please login to save favorites', 'error')
+      return
+    }
+
+    const newState = !isSaved
+    setIsSaved(newState)
+
+    try {
+      await store.toggleFavorite(slug)
+      localStorage.setItem(`kalro_saved_${product.id}`, newState.toString())
+      showToast(
+        newState ? 'Product saved to favorites' : 'Removed from favorites',
+        newState ? 'success' : 'info'
+      )
+    } catch (error) {
+      showToast('Failed to update favorites', 'error')
+      setIsSaved(!newState)
+    }
   }
 
   const handleLaunch = async () => {
@@ -395,16 +209,19 @@ const ProductDetail = () => {
     setLaunchStatus({ type: 'loading', message: 'Preparing to launch...', show: true })
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      await store.trackDownload(slug)
+
+      await new Promise((res) => safeSetTimeout(res, 1500))
       setLaunchStatus({ type: 'loading', message: 'Verifying access...', show: true })
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setLaunchStatus({ type: 'loading', message: 'Launching application...', show: true })
-      await new Promise(resolve => setTimeout(resolve, 1000))
       
+      await new Promise((res) => safeSetTimeout(res, 1000))
+      setLaunchStatus({ type: 'loading', message: 'Launching application...', show: true })
+      
+      await new Promise((res) => safeSetTimeout(res, 1000))
       setLaunchStatus({ type: 'success', message: 'App launched successfully!', show: true })
       showToast('🚀 Application launched successfully!', 'success')
-      
-      setTimeout(() => {
+
+      safeSetTimeout(() => {
         setLaunchStatus({ type: '', message: '', show: false })
         setIsLaunching(false)
       }, 3000)
@@ -415,112 +232,92 @@ const ProductDetail = () => {
     }
   }
 
-  const handleSubmitComment = (e) => {
+  const handleSubmitComment = async (e) => {
     e.preventDefault()
-    if (!newComment.name || !newComment.email || !newComment.text) {
+
+    if (!isAuthenticated) {
+      showToast('Please login to submit a review', 'error')
+      return
+    }
+
+    if (!newComment.name.trim() || !newComment.email.trim() || !newComment.text.trim()) {
       showToast('Please fill in all fields', 'error')
       return
     }
+
     if (selectedRating === 0) {
       showToast('Please select a rating', 'error')
       return
     }
 
-    const comment = {
-      id: Date.now(),
-      author: newComment.name,
-      date: 'Just now',
-      rating: selectedRating,
-      text: newComment.text,
-      likes: 0
+    try {
+      const reviewData = {
+        rating: selectedRating,
+        comment: newComment.text,
+        comment_sw: newComment.text
+      }
+
+      await store.addReview(slug, reviewData)
+
+      const comment = {
+        id: `${Date.now()}-${Math.random()}`,
+        author: newComment.name,
+        created_at: new Date().toISOString(),
+        rating: selectedRating,
+        text: newComment.text,
+        likes: 0
+      }
+
+      setComments((prev) => [comment, ...prev])
+      setNewComment({ name: '', email: '', text: '' })
+      setSelectedRating(0)
+      setHoverRating(0)
+      showToast('✅ Your review has been submitted!', 'success')
+    } catch (error) {
+      showToast('Failed to submit review. Please try again.', 'error')
     }
-
-    setComments(prev => [comment, ...prev])
-    setNewComment({ name: '', email: '', text: '' })
-    setSelectedRating(0)
-    setHoverRating(0)
-    showToast('✅ Your review has been submitted!', 'success')
-  }
-
-  const getRelatedProducts = (productIds) => {
-    if (!productIds) return []
-    return productIds.map(id => productDatabase[id]).filter(Boolean)
-  }
-
-  const getPlatformIcon = (platform) => {
-    const icons = {
-      'Web App': faGlobe,
-      'Android': faAndroid,
-      'iOS': faApple,
-      'Desktop': faDesktop,
-      'Windows': faWindows
-    }
-    return icons[platform] || faDesktop
-  }
-
-  const getIconBgClass = (bg) => {
-    const classes = {
-      'green': 'green', 'blue': 'blue', 'orange': 'orange', 'purple': 'purple',
-      'brown': 'brown', 'teal': 'teal', 'indigo': 'indigo', 'cyan': 'cyan',
-      'amber': 'amber', 'deep-purple': 'deep-purple', 'red': 'red'
-    }
-    return classes[bg] || 'green'
   }
 
   const renderStars = (rating, interactive = false) => {
-    const fullStars = Math.floor(rating)
-    const stars = []
-    
-    for (let i = 0; i < 5; i++) {
+    const numRating = parseFloat(rating) || 0
+    const fullStars = Math.floor(numRating)
+
+    return Array.from({ length: 5 }, (_, i) => {
       const starValue = i + 1
-      let isActive = false
-      
-      if (interactive) {
-        isActive = starValue <= (hoverRating || selectedRating)
-      } else {
-        isActive = starValue <= fullStars
-      }
-      
-      stars.push(
-        <span 
-          key={i} 
+      const isActive = interactive
+        ? starValue <= (hoverRating || selectedRating)
+        : starValue <= fullStars
+
+      return (
+        <span
+          key={i}
           className={`star ${isActive ? 'active' : ''}`}
           onClick={() => interactive && setSelectedRating(starValue)}
           onMouseEnter={() => interactive && setHoverRating(starValue)}
           onMouseLeave={() => interactive && setHoverRating(0)}
-          style={{ 
+          style={{
             color: isActive ? '#f4b942' : '#d0d0d0',
             cursor: interactive ? 'pointer' : 'default'
           }}
         >
-          <FontAwesomeIcon icon={faStar} />
+          <FontAwesomeIcon icon={faStarSolid} />
         </span>
       )
-    }
-    
-    return stars
+    })
   }
 
+  // Navigation functions
+  const screenshots = getScreenshots(product)
+  const totalImages = screenshots.length || 1 // At least 1 for placeholder
+
   const nextImage = () => {
-    setCurrentImageIndex((prevIndex) => (prevIndex + 1) % galleryImages.length)
+    if (screenshots.length === 0) return
+    setCurrentImageIndex((prev) => (prev + 1) % screenshots.length)
   }
 
   const prevImage = () => {
-    setCurrentImageIndex((prevIndex) => (prevIndex - 1 + galleryImages.length) % galleryImages.length)
-  }
-
-  const goToImage = (index) => {
-    setCurrentImageIndex(index)
-  }
-
-  const openVideoModal = () => {
-    setIsVideoModalOpen(true)
-    document.body.style.overflow = 'hidden'
-  }
-
-  const closeVideoModal = () => {
-    setIsVideoModalOpen(false)
-    document.body.style.overflow = ''
+    if (screenshots.length === 0) return
+    setCurrentImageIndex((prev) => (prev - 1 + screenshots.length) % screenshots.length)
   }
 
   if (loading) {
@@ -542,17 +339,15 @@ const ProductDetail = () => {
         <div className="container">
           <div className="not-found">
             <h2>Product not found</h2>
-            <p>The product you're looking for doesn't exist.</p>
-            <Link to="/?page=store" className="btn primary">
-              <FontAwesomeIcon icon={faArrowRight} /> Back to Store
+            <p>{error || "The product you're looking for doesn't exist."}</p>
+            <Link to="/?page=store" className="btn primary" style={{ marginTop: '24px' }}>
+              <FontAwesomeIcon icon={faArrowRight} /> Browse All Products
             </Link>
           </div>
         </div>
       </main>
     )
   }
-
-  const relatedProducts = getRelatedProducts(product.related)
 
   return (
     <>
@@ -567,134 +362,158 @@ const ProductDetail = () => {
             <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{product.title}</span>
           </nav>
 
-          {/* Product Details */}
+          {/* Product Overview */}
           <section className="product-details" id="overview">
-            {/* Image Gallery */}
             <div className="product-media">
               <div className="gallery-container">
-                {/* Main Display Area */}
                 <div className="gallery-main">
-                  <img 
-                    src={galleryImages[currentImageIndex].url} 
-                    alt={galleryImages[currentImageIndex].alt}
-                    onError={(e) => {
-                      e.target.src = 'https://via.placeholder.com/600x400/009640/ffffff?text=KALRO+App+Screenshot';
-                    }}
-                  />
-                  {galleryImages[currentImageIndex].type === 'video' && (
-                    <div className="gallery-video-play" onClick={openVideoModal}>
-                      <FontAwesomeIcon icon={faPlayCircle} />
+                  {screenshots.length > 0 ? (
+                    <img
+                      src={getImageUrl(screenshots[currentImageIndex])}
+                      alt={screenshots[currentImageIndex]?.alt_text || product.title}
+                      onError={() => handleImageError(screenshots[currentImageIndex]?.id)}
+                    />
+                  ) : (
+                    <div className="gallery-placeholder">
+                      <FontAwesomeIcon icon={faImage} size="4x" />
+                      <p>No screenshots available</p>
                     </div>
                   )}
-                  <button className="gallery-nav gallery-nav-left" onClick={prevImage} aria-label="Previous image">
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                  </button>
-                  <button className="gallery-nav gallery-nav-right" onClick={nextImage} aria-label="Next image">
-                    <FontAwesomeIcon icon={faChevronRight} />
-                  </button>
+                  {screenshots.length > 1 && (
+                    <>
+                      <button className="gallery-nav gallery-nav-left" onClick={prevImage} aria-label="Previous image">
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                      </button>
+                      <button className="gallery-nav gallery-nav-right" onClick={nextImage} aria-label="Next image">
+                        <FontAwesomeIcon icon={faChevronRight} />
+                      </button>
+                    </>
+                  )}
                 </div>
 
-                {/* Thumbnail Strip */}
-                <div className="gallery-thumbnails">
-                  {galleryImages.map((image, index) => (
-                    <div 
-                      key={image.id}
-                      className={`gallery-thumbnail ${currentImageIndex === index ? 'active' : ''}`}
-                      onClick={() => goToImage(index)}
-                    >
-                      <img 
-                        src={image.url} 
-                        alt={image.alt}
-                        onError={(e) => {
-                          e.target.src = 'https://via.placeholder.com/100x80/cccccc/666666?text=Image';
-                        }}
-                      />
-                      {image.type === 'video' && (
-                        <div className="thumbnail-video-badge">
-                          <FontAwesomeIcon icon={faPlay} />
+                {screenshots.length > 1 && (
+                  <>
+                    <div className="gallery-thumbnails">
+                      {screenshots.map((screenshot, index) => (
+                        <div
+                          key={screenshot.id}
+                          className={`gallery-thumbnail ${currentImageIndex === index ? 'active' : ''}`}
+                          onClick={() => setCurrentImageIndex(index)}
+                        >
+                          <img
+                            src={getImageUrl(screenshot, true)}
+                            alt={screenshot.alt_text || `Screenshot ${index + 1}`}
+                            onError={() => handleImageError(screenshot.id)}
+                          />
+                          {screenshot.is_video && (
+                            <div className="thumbnail-video-badge">
+                              <FontAwesomeIcon icon={faPlay} />
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
 
-                {/* Image Counter */}
-                <div className="gallery-counter">
-                  {currentImageIndex + 1} / {galleryImages.length}
-                </div>
+                    <div className="gallery-counter">
+                      {currentImageIndex + 1} / {screenshots.length}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Product Info */}
             <div className="product-info">
               <span className="category-tag">
-                <FontAwesomeIcon icon={product.icon} /> {product.category}
+                <FontAwesomeIcon icon={faStore} /> {product.category_name || product.category || 'Product'}
               </span>
               <h1>{product.title}</h1>
 
               <div className="rating">
-                <span className="stars">{renderStars(product.rating)}</span>
-                <span>{product.rating}</span>
-                <span className="count">({product.reviews.toLocaleString()} reviews)</span>
+                <span className="stars">{renderStars(product.rating || 0)}</span>
+                <span>{product.rating || 0}</span>
+                <span className="count">({product.reviews_count || 0} reviews)</span>
               </div>
 
-              <div className="badge-group">
-                {product.badges && product.badges.map((badge, index) => (
-                  <span key={index} className={`badge ${index % 2 === 0 ? '' : 'secondary'}`}>
-                    <FontAwesomeIcon icon={index === 0 ? faStar : index === 1 ? faRocket : faShieldAlt} /> {badge}
-                  </span>
-                ))}
-              </div>
+              {product.badges && product.badges.length > 0 && (
+                <div className="badge-group">
+                  {product.badges.slice(0, 3).map((badge, index) => (
+                    <span key={index} className={`badge ${index % 2 === 0 ? '' : 'secondary'}`}>
+                      <FontAwesomeIcon icon={index === 0 ? faStarSolid : index === 1 ? faRocket : faShieldAlt} /> {badge}
+                    </span>
+                  ))}
+                </div>
+              )}
 
-              <p className="description">{product.longDescription || product.description}</p>
-
-              {/* Platform Availability Badges */}
-              <div className="platform-badges">
-                {product.platforms && product.platforms.map((platform, index) => (
-                  <span 
-                    key={index} 
-                    className={`platform-badge ${product.availablePlatforms && product.availablePlatforms.includes(platform) ? 'available' : ''}`}
-                  >
-                    <FontAwesomeIcon icon={getPlatformIcon(platform)} /> {platform}
-                  </span>
-                ))}
-              </div>
+              <p className="description">{product.short_description}</p>
 
               <div className="meta-grid">
                 <div className="meta-item">
-                  <FontAwesomeIcon icon={faUser} /> <span><strong>Users:</strong> {product.users}</span>
+                  <FontAwesomeIcon icon={faDownload} /> <span><strong>Downloads:</strong> {product.downloads_count || '0'}</span>
                 </div>
+                {product.is_featured && (
+                  <div className="meta-item">
+                    <FontAwesomeIcon icon={faStarSolid} /> <span><strong>Status:</strong> Featured</span>
+                  </div>
+                )}
                 <div className="meta-item">
-                  <FontAwesomeIcon icon={faDownload} /> <span><strong>Downloads:</strong> {product.downloads}</span>
-                </div>
-                <div className="meta-item">
-                  <FontAwesomeIcon icon={faCalendarAlt} /> <span><strong>Last updated:</strong> {product.lastUpdated}</span>
-                </div>
-                <div className="meta-item">
-                  <FontAwesomeIcon icon={faTag} /> <span><strong>Version:</strong> {product.version}</span>
-                </div>
-                <div className="meta-item">
-                  <FontAwesomeIcon icon={faGlobe} /> <span><strong>Languages:</strong> {product.languages}</span>
-                </div>
-                <div className="meta-item">
-                  <FontAwesomeIcon icon={faShieldAlt} /> <span><strong>Security:</strong> {product.security}</span>
+                  <FontAwesomeIcon icon={faGlobe} /> <span><strong>Languages:</strong> English, Kiswahili</span>
                 </div>
               </div>
 
+              {product.links && Object.keys(product.links).length > 0 && (
+                <div className="app-links">
+                  <h4>Available on</h4>
+                  <div className="app-links-grid">
+                    {product.links.web_app && (
+                      <a href={product.links.web_app} target="_blank" rel="noopener noreferrer" className="app-link web">
+                        <FontAwesomeIcon icon={faGlobe} /> Web App
+                      </a>
+                    )}
+                    {product.links.google_play && (
+                      <a href={product.links.google_play} target="_blank" rel="noopener noreferrer" className="app-link play">
+                        <FontAwesomeIcon icon={faAndroid} /> Google Play
+                      </a>
+                    )}
+                    {product.links.apple_app_store && (
+                      <a href={product.links.apple_app_store} target="_blank" rel="noopener noreferrer" className="app-link apple">
+                        <FontAwesomeIcon icon={faApple} /> App Store
+                      </a>
+                    )}
+                    {product.links.demo_video && (
+                      <button onClick={() => setIsVideoModalOpen(true)} className="app-link demo">
+                        <FontAwesomeIcon icon={faPlay} /> Watch Demo
+                      </button>
+                    )}
+                    {product.links.documentation && (
+                      <a href={product.links.documentation} target="_blank" rel="noopener noreferrer" className="app-link docs">
+                        <FontAwesomeIcon icon={faBook} /> Documentation
+                      </a>
+                    )}
+                    {product.links.support && (
+                      <a href={product.links.support} target="_blank" rel="noopener noreferrer" className="app-link support">
+                        <FontAwesomeIcon icon={faHeadset} /> Support
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="actions-row">
-                <button 
-                  className="btn primary btn-large" 
+                <button
+                  className="btn primary btn-large"
                   onClick={handleLaunch}
                   disabled={isLaunching}
                 >
-                  <FontAwesomeIcon icon={isLaunching ? faSpinner : faRocket} spin={isLaunching} /> 
+                  <FontAwesomeIcon icon={isLaunching ? faSpinner : faRocket} spin={isLaunching} />
                   {isLaunching ? 'Launching...' : 'Launch app'}
                 </button>
-                <button className="btn outline btn-large" onClick={openVideoModal}>
-                  <FontAwesomeIcon icon={faPlay} /> Watch demo
-                </button>
+                {product.links?.demo_video && (
+                  <button className="btn outline btn-large" onClick={() => setIsVideoModalOpen(true)}>
+                    <FontAwesomeIcon icon={faPlay} /> Watch demo
+                  </button>
+                )}
                 <button className={`btn outline btn-large ${isSaved ? 'saved' : ''}`} onClick={handleSave}>
-                  <FontAwesomeIcon icon={faHeart} style={{ color: isSaved ? '#c62828' : 'inherit' }} /> 
+                  <FontAwesomeIcon icon={faHeart} style={{ color: isSaved ? '#c62828' : 'inherit' }} />
                   {isSaved ? 'Saved' : 'Save'}
                 </button>
               </div>
@@ -712,135 +531,103 @@ const ProductDetail = () => {
             </div>
           </section>
 
-          {/* Features Section */}
-          <section className="features-section" id="features">
-            <h2><FontAwesomeIcon icon={faStar} style={{ color: 'var(--primary)', marginRight: '12px' }} /> Key features</h2>
-            <div className="features-grid">
-              {product.features && product.features.map((feature, index) => (
-                <div className="feature-item" key={index}>
-                  <div className="icon"><FontAwesomeIcon icon={feature.icon} /></div>
-                  <h4>{feature.title}</h4>
-                  <p>{feature.description}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Technical Specs */}
-          <section className="specs-section" id="specs">
-            <h2><FontAwesomeIcon icon={faCode} style={{ color: 'var(--primary)', marginRight: '12px' }} /> Technical specifications</h2>
-            <div className="specs-grid">
-              {product.specs && product.specs.map((spec, index) => (
-                <div className="spec-item" key={index}>
-                  <span className="label">{spec.label}</span>
-                  <span className="value">{spec.value}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
           {/* Comments Section */}
           <section className="comments-section" id="comments">
-            <h2><FontAwesomeIcon icon={faComments} style={{ color: 'var(--primary)', marginRight: '12px' }} /> User reviews</h2>
+            <h2>
+              <FontAwesomeIcon icon={faComments} style={{ color: 'var(--primary)', marginRight: '12px' }} /> User reviews
+            </h2>
             <p className="comment-subtitle">Share your experience with {product.title}</p>
 
-            <div className="comment-form">
+            <form className="comment-form" onSubmit={handleSubmitComment}>
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="commentName">Full name</label>
-                  <input 
-                    type="text" 
-                    id="commentName" 
-                    placeholder="e.g. John Kamau" 
+                  <input
+                    type="text"
+                    id="commentName"
+                    placeholder="e.g. John Kamau"
                     value={newComment.name}
-                    onChange={(e) => setNewComment({ ...newComment, name: e.target.value })}
+                    onChange={(e) => setNewComment((prev) => ({ ...prev, name: e.target.value }))}
                   />
                 </div>
                 <div className="form-group">
                   <label htmlFor="commentEmail">Email address</label>
-                  <input 
-                    type="email" 
-                    id="commentEmail" 
-                    placeholder="e.g. john@example.com" 
+                  <input
+                    type="email"
+                    id="commentEmail"
+                    placeholder="e.g. john@example.com"
                     value={newComment.email}
-                    onChange={(e) => setNewComment({ ...newComment, email: e.target.value })}
+                    onChange={(e) => setNewComment((prev) => ({ ...prev, email: e.target.value }))}
                   />
                 </div>
               </div>
               <div className="form-group" style={{ marginBottom: '12px' }}>
                 <label>Your rating</label>
-                <div className="rating-input">
-                  {renderStars(5, true)}
-                </div>
+                <div className="rating-input">{renderStars(5, true)}</div>
                 <span style={{ fontSize: '13px', color: 'var(--muted)' }}>
                   {selectedRating > 0 ? `Rating: ${selectedRating} / 5` : 'Select a rating'}
                 </span>
               </div>
               <div className="form-group">
                 <label htmlFor="commentText">Your review</label>
-                <textarea 
-                  id="commentText" 
-                  placeholder="What did you think of the app? What features did you find most useful?" 
+                <textarea
+                  id="commentText"
+                  placeholder="What did you think of the app? What features did you find most useful?"
                   value={newComment.text}
-                  onChange={(e) => setNewComment({ ...newComment, text: e.target.value })}
+                  onChange={(e) => setNewComment((prev) => ({ ...prev, text: e.target.value }))}
                 />
               </div>
               <div className="form-actions">
-                <button className="btn primary" onClick={handleSubmitComment}>
+                <button type="submit" className="btn primary">
                   <FontAwesomeIcon icon={faPaperPlane} /> Submit review
                 </button>
-                <button className="btn outline" onClick={() => {
-                  setNewComment({ name: '', email: '', text: '' })
-                  setSelectedRating(0)
-                  setHoverRating(0)
-                  showToast('Review cleared', 'info')
-                }}>
+                <button
+                  type="button"
+                  className="btn outline"
+                  onClick={() => {
+                    setNewComment({ name: '', email: '', text: '' })
+                    setSelectedRating(0)
+                    setHoverRating(0)
+                    showToast('Review cleared', 'info')
+                  }}
+                >
                   Cancel
                 </button>
               </div>
-            </div>
+            </form>
 
             <div className="comments-list">
-              {comments.map((comment) => (
-                <div className="comment-item" key={comment.id}>
-                  <div className="comment-header">
-                    <span className="comment-author">
-                      <FontAwesomeIcon icon={faUserCircle} style={{ color: 'var(--primary)', marginRight: '6px' }} /> 
-                      {comment.author}
-                    </span>
-                    <span className="comment-date">{comment.date}</span>
-                  </div>
-                  <div className="comment-stars">{renderStars(comment.rating)}</div>
-                  <p className="comment-text">{comment.text}</p>
-                  <div className="comment-actions">
-                    <button><FontAwesomeIcon icon={faThumbsUp} /> {comment.likes}</button>
-                    <button><FontAwesomeIcon icon={faReply} /> Reply</button>
-                  </div>
+              {comments.length > 0 ? (
+                comments.map((comment) => {
+                  const dateStr = comment.created_at
+                    ? new Date(comment.created_at).toLocaleDateString()
+                    : 'Recently'
+
+                  return (
+                    <div className="comment-item" key={comment.id || `${comment.author}-${Math.random()}`}>
+                      <div className="comment-header">
+                        <span className="comment-author">
+                          <FontAwesomeIcon icon={faUserCircle} style={{ color: 'var(--primary)', marginRight: '6px' }} />
+                          {comment.user?.first_name || comment.author || 'Anonymous'}
+                        </span>
+                        <span className="comment-date">{dateStr}</span>
+                      </div>
+                      <div className="comment-stars">{renderStars(comment.rating || 0)}</div>
+                      <p className="comment-text">{comment.text || comment.comment}</p>
+                      <div className="comment-actions">
+                        <button type="button"><FontAwesomeIcon icon={faThumbsUp} /> {comment.likes || 0}</button>
+                        <button type="button"><FontAwesomeIcon icon={faReply} /> Reply</button>
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="no-comments">
+                  <p>No reviews yet. Be the first to review this product!</p>
                 </div>
-              ))}
+              )}
             </div>
           </section>
-
-          {/* Related Products */}
-          {relatedProducts && relatedProducts.length > 0 && (
-            <section className="related-section" id="related">
-              <h2><FontAwesomeIcon icon={faThLarge} style={{ color: 'var(--primary)', marginRight: '12px' }} /> Related products</h2>
-              <div className="related-grid">
-                {relatedProducts.map((related) => (
-                  <Link to={`/product/${related.id}`} className="related-card-link" key={related.id}>
-                    <div className="related-card">
-                      <div className="icon"><FontAwesomeIcon icon={related.icon} /></div>
-                      <h4>{related.title}</h4>
-                      <div className="cat">{related.category}</div>
-                      <span className="link">
-                        View details <FontAwesomeIcon icon={faArrowRight} />
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
         </div>
 
         {/* Toast Container */}
@@ -863,15 +650,15 @@ const ProductDetail = () => {
 
       {/* Video Modal */}
       {isVideoModalOpen && (
-        <div className="video-modal-overlay" onClick={closeVideoModal}>
+        <div className="video-modal-overlay" onClick={() => setIsVideoModalOpen(false)}>
           <div className="video-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="video-modal-close" onClick={closeVideoModal}>
+            <button className="video-modal-close" onClick={() => setIsVideoModalOpen(false)}>
               <FontAwesomeIcon icon={faTimes} />
             </button>
             <div className="video-modal-content">
               <div className="video-wrapper">
                 <iframe
-                  src={demoVideoUrl}
+                  src={product.links?.demo_video || DEMO_VIDEO_FALLBACK}
                   title="App Demo Video"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

@@ -2925,3 +2925,245 @@ textarea:focus-visible {
   transform: translateY(-6px);
   box-shadow: var(--card-hover);
 }
+
+
+/* Added Header CSS */
+
+/* ============================================================
+   HEADER - Enhanced with Auth Styles
+   ============================================================ */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  flex-shrink: 0;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.brand .brand-logo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+.brand .logo {
+  width: 38px;
+  height: 38px;
+  background: var(--primary);
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.brand small {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--soft-bg);
+  padding: 2px 14px;
+  border-radius: 40px;
+  margin-left: 4px;
+}
+
+/* Right section */
+.right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 13px;
+}
+
+.right a {
+  color: var(--muted);
+  transition: 0.15s;
+  text-decoration: none;
+}
+
+.right a:hover {
+  color: var(--ink);
+}
+
+/* Sign In Link */
+.sign-in-link {
+  font-weight: 500;
+}
+
+.sign-in-link:hover {
+  color: var(--primary) !important;
+}
+
+/* Register Button */
+.btn-primary-small {
+  display: inline-block;
+  padding: 6px 18px;
+  background: var(--primary);
+  color: white !important;
+  border-radius: 40px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: 0.15s;
+  text-decoration: none;
+}
+
+.btn-primary-small:hover {
+  background: var(--primary-dark);
+  color: white !important;
+  transform: translateY(-1px);
+}
+
+/* User Menu */
+.user-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.user {
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid #d0d0d0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  transition: 0.15s;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.user:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.user svg {
+  font-size: 18px;
+}
+
+/* User Dropdown */
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border: 1px solid #e6e6e6;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--card-hover);
+  min-width: 240px;
+  padding: 8px 0;
+  z-index: 1000;
+  animation: slideDown 0.2s ease;
+}
+
+.user-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.user-dropdown-avatar {
+  font-size: 36px;
+  color: var(--primary);
+}
+
+.user-dropdown-header strong {
+  display: block;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.user-dropdown-header small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.user-dropdown a,
+.user-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  width: 100%;
+  text-align: left;
+  font-size: 14px;
+  color: var(--muted);
+  transition: 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.user-dropdown a:hover,
+.user-dropdown button:hover {
+  background: var(--soft-bg);
+  color: var(--ink);
+}
+
+.user-dropdown a svg,
+.user-dropdown button svg {
+  width: 16px;
+  color: var(--muted);
+}
+
+.user-dropdown a:hover svg,
+.user-dropdown button:hover svg {
+  color: var(--primary);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 4px 0;
+}
+
+.user-dropdown button:last-child {
+  color: #c62828;
+}
+
+.user-dropdown button:last-child:hover {
+  background: #fde8e8;
+  color: #c62828;
+}
+
+.user-dropdown button:last-child:hover svg {
+  color: #c62828;
+}
+
+/* Dropdown Animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .btn-primary-small {
+    padding: 4px 12px;
+    font-size: 11px;
+  }
+  
+  .user-dropdown {
+    min-width: 200px;
+    right: -10px;
+  }
+}
