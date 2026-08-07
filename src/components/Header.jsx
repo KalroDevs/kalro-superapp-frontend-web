@@ -57,7 +57,7 @@ const Header = ({ onStoreClick }) => {
             ) : (
               <span className="logo">KALRO</span>
             )}
-            <span>KALRO <small>{t('superapp')}</small></span>
+            <span>{t('superapp')}  <small></small></span>
           </a>
           <span className="divider"></span>
 
