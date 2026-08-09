@@ -458,8 +458,8 @@ button {
 }
 
 .logo {
-  width: 38px;
-  height: 38px;
+  width: 100px;
+  height: 90px;
   background: var(--primary);
   color: white;
   display: grid;
@@ -490,8 +490,8 @@ button {
 }
 
 .brand img { 
-  width: 75px;
-  height: 70px;
+  width: 100px;
+  height: 90px;
 }
 
 .brand small {
@@ -2945,8 +2945,8 @@ textarea:focus-visible {
 }
 
 .brand .brand-logo {
-  width: 38px;
-  height: 38px;
+  width: 80px;
+  height: 75px;
   object-fit: contain;
   border-radius: var(--radius-sm);
 }
@@ -2966,9 +2966,10 @@ textarea:focus-visible {
 }
 
 .brand small {
-  font-weight: 400;
-  font-size: 12px;
-  color: var(--muted);
+  font-weight: 700;
+  font-size: 14px;
+  /* color: var(--muted); */
+  color: var(--primary);
   background: var(--soft-bg);
   padding: 2px 14px;
   border-radius: 40px;

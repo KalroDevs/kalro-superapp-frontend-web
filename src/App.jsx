@@ -68,9 +68,11 @@ function AppContent() {
         <Store />
       ) : (
         <main>
+          
           <Hero />
-          {/* <RoleTabs /> */}
           <HeroSearch />
+          {/* <RoleTabs /> */}
+          
           {/* <HowItWorks /> */}
           {/* <Updates /> */}
           {/* <Services /> */}

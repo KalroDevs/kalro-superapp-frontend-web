@@ -13,7 +13,7 @@ const translations = {
     
     // Brand
     'kalro': 'KALRO',
-    'superapp': 'Digital',
+    'superapp': 'Digital Products/Services',
     'oneStopShop': 'One Stop Shop',
     
     // Navigation
@@ -260,7 +260,7 @@ const translations = {
     
     // Brand
     'kalro': 'KALRO',
-    'superapp': 'Dijitali',
+    'superapp': 'Huduma za Dijitali za KALRO',
     'oneStopShop': 'Duka Moja',
     
     // Navigation

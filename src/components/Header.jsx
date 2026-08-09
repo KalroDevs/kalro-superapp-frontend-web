@@ -82,11 +82,11 @@ const Header = ({ onStoreClick }) => {
             ) : (
               <span className="logo">KALRO</span>
             )}
-            <span>KALRO <small>{t('superapp')}</small></span>
+            <span><small>{t('superapp')}</small></span>
           </Link>
           <span className="divider"></span>
 
-          <ul className="mainnav">
+          {/* <ul className="mainnav">
             <li>
               <a href="#"><FontAwesomeIcon icon={faThLarge} /> {t('oneStopShop')} <FontAwesomeIcon icon={faChevronDown} /></a>
               <div className="mega-dropdown">
@@ -118,7 +118,7 @@ const Header = ({ onStoreClick }) => {
             <li><a href="#">{t('knowledge')}</a></li>
             <li><a href="#" onClick={(e) => { e.preventDefault(); onStoreClick(); }}><FontAwesomeIcon icon={faStore} /> App Store</a></li>
             <li><a href="#">{t('about')}</a></li>
-          </ul>
+          </ul> */}
 
           <div className="right">
             <div className="lang-selector">
