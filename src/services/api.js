@@ -1,6 +1,6 @@
 // API Service - Handles all API calls to the backend
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://10.101.100.35/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://digital.kalro.org/api/v1'
 
 // Helper to sanitize query parameters
 const buildQueryString = (params = {}) => {
