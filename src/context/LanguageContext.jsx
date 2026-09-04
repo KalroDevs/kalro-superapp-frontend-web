@@ -190,7 +190,7 @@ const translations = {
     'privacy': 'Privacy',
     'terms': 'Terms',
     'support': 'Support',
-    'copyright': '© 2026 KALRO · Digital Agriculture Ecosystem',
+    'copyright': '© 2026 The Kenya Agricultural and Livestock Research Organization (KALRO)',
     
     // Categories
     'categoryAll': 'All',
@@ -436,7 +436,7 @@ const translations = {
     'privacy': 'Faragha',
     'terms': 'Masharti',
     'support': 'Msaada',
-    'copyright': '© 2026 KALRO · Mfumo wa Dijitali wa Kilimo',
+    'copyright': '© 2026 The Kenya Agricultural and Livestock Research Organization (KALRO) ',
     
     // Categories
     'categoryAll': 'Zote',

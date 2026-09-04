@@ -1,106 +1,140 @@
 // API Service - Handles all API calls to the backend
+// ============================================================
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://digital.kalro.org/api/v1'
+// Try multiple strategies for API URL
+const getApiBaseUrl = () => {
+  // 1. Use environment variable if set
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // 2. Use relative path (for Vite proxy)
+  if (import.meta.env.DEV) {
+    return '/api';
+  }
+  
+  // 3. Use direct URL with fallback CORS proxy
+  const directUrl = 'https://digital.kalro.org/api/v1';
+  const proxyUrl = 'https://cors-anywhere.herokuapp.com/' + directUrl;
+  
+  // Try to detect if direct access works
+  return directUrl;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Helper to sanitize query parameters
 const buildQueryString = (params = {}) => {
   const cleanParams = Object.entries(params).reduce((acc, [key, value]) => {
     if (value !== null && value !== undefined && value !== '') {
-      acc[key] = value
+      acc[key] = value;
     }
-    return acc
-  }, {})
+    return acc;
+  }, {});
 
-  const queryString = new URLSearchParams(cleanParams).toString()
-  return queryString ? `?${queryString}` : ''
-}
+  const queryString = new URLSearchParams(cleanParams).toString();
+  return queryString ? `?${queryString}` : '';
+};
 
 // Default headers generator
 const getHeaders = (includeAuth = true) => {
   const headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-  }
+  };
 
   if (includeAuth) {
-    const token = localStorage.getItem('access_token')
+    const token = localStorage.getItem('access_token');
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+      headers['Authorization'] = `Bearer ${token}`;
     }
   }
 
-  return headers
-}
+  return headers;
+};
 
 // Handle API responses safely
 const handleResponse = async (response) => {
   if (response.status === 204) {
-    return {}
+    return {};
   }
 
   if (response.status === 404) {
-    let errorMessage = 'Resource not found'
-    let errorData = {}
+    let errorMessage = 'Resource not found';
+    let errorData = {};
     try {
-      errorData = await response.json()
-      errorMessage = errorData.detail || errorData.message || 'Resource not found'
+      errorData = await response.json();
+      errorMessage = errorData.detail || errorData.message || 'Resource not found';
     } catch {
-      errorMessage = 'The requested resource was not found'
+      errorMessage = 'The requested resource was not found';
     }
-    const error = new Error(errorMessage)
-    error.status = 404
-    error.data = errorData
-    throw error
+    const error = new Error(errorMessage);
+    error.status = 404;
+    error.data = errorData;
+    throw error;
   }
 
   if (!response.ok) {
-    let errorMessage = 'An error occurred'
-    let errorData = {}
+    let errorMessage = 'An error occurred';
+    let errorData = {};
     
     try {
-      errorData = await response.json()
+      errorData = await response.json();
       errorMessage = 
         errorData.detail ||
         errorData.message ||
         errorData.error ||
         errorData.non_field_errors?.[0] ||
-        JSON.stringify(errorData)
+        JSON.stringify(errorData);
     } catch {
-      errorMessage = response.statusText || `HTTP ${response.status}`
+      errorMessage = response.statusText || `HTTP ${response.status}`;
     }
     
-    const error = new Error(errorMessage)
-    error.status = response.status
-    error.data = errorData
-    throw error
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    error.data = errorData;
+    throw error;
   }
 
-  return response.json()
-}
+  return response.json();
+};
 
 // ============================================================
 // REFRESH TOKEN QUEUE LOGIC
 // ============================================================
 
-let isRefreshing = false
-let failedQueue = []
+let isRefreshing = false;
+let failedQueue = [];
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
-      prom.reject(error)
+      prom.reject(error);
     } else {
-      prom.resolve(token)
+      prom.resolve(token);
     }
-  })
-  failedQueue = []
-}
+  });
+  failedQueue = [];
+};
 
-// Generic request function
+// Generic request function with CORS handling
 const request = async (endpoint, options = {}) => {
-  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
-  const url = `${API_BASE_URL}${normalizedEndpoint}`
-  const includeAuth = options.includeAuth !== false
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  // Check if we're using a proxy or direct URL
+  const isUsingProxy = API_BASE_URL.includes('cors-anywhere') || 
+                       API_BASE_URL.includes('allorigins') ||
+                       API_BASE_URL.startsWith('/api');
+  
+  let url;
+  if (isUsingProxy) {
+    // When using proxy, ensure we don't double-specify the path
+    url = `${API_BASE_URL}${normalizedEndpoint}`;
+  } else {
+    url = `${API_BASE_URL}${normalizedEndpoint}`;
+  }
+  
+  const includeAuth = options.includeAuth !== false;
 
   const config = {
     ...options,
@@ -108,74 +142,95 @@ const request = async (endpoint, options = {}) => {
       ...getHeaders(includeAuth),
       ...options.headers,
     },
+  };
+
+  // Add CORS-specific headers
+  if (!import.meta.env.DEV) {
+    config.headers['Origin'] = window.location.origin;
   }
 
   if (['GET', 'HEAD'].includes(config.method?.toUpperCase())) {
-    delete config.body
+    delete config.body;
   } else if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
-    config.body = JSON.stringify(config.body)
+    config.body = JSON.stringify(config.body);
   }
 
   if (import.meta.env.DEV) {
-    console.log(`📡 API Request: ${config.method || 'GET'} ${url}`)
+    console.log(`📡 API Request: ${config.method || 'GET'} ${url}`);
   }
 
   try {
-    const response = await fetch(url, config)
+    const response = await fetch(url, config);
 
     if (import.meta.env.DEV) {
-      console.log(`📡 API Response: ${response.status} ${response.statusText}`)
+      console.log(`📡 API Response: ${response.status} ${response.statusText}`);
     }
 
     if (response.status === 401 && includeAuth && !options._retry && !options._isRefreshRequest) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject })
+          failedQueue.push({ resolve, reject });
         })
           .then((token) => {
-            config.headers['Authorization'] = `Bearer ${token}`
-            return fetch(url, config).then(handleResponse)
+            config.headers['Authorization'] = `Bearer ${token}`;
+            return fetch(url, config).then(handleResponse);
           })
-          .catch((err) => Promise.reject(err))
+          .catch((err) => Promise.reject(err));
       }
 
-      options._retry = true
-      isRefreshing = true
+      options._retry = true;
+      isRefreshing = true;
 
       try {
-        const refreshResponse = await tokenService.refresh()
-        const newAccessToken = refreshResponse.access
+        const refreshResponse = await tokenService.refresh();
+        const newAccessToken = refreshResponse.access;
 
-        isRefreshing = false
-        processQueue(null, newAccessToken)
+        isRefreshing = false;
+        processQueue(null, newAccessToken);
 
-        config.headers['Authorization'] = `Bearer ${newAccessToken}`
-        const retryResponse = await fetch(url, config)
-        return handleResponse(retryResponse)
+        config.headers['Authorization'] = `Bearer ${newAccessToken}`;
+        const retryResponse = await fetch(url, config);
+        return handleResponse(retryResponse);
       } catch (refreshError) {
-        isRefreshing = false
-        processQueue(refreshError, null)
-        tokenService.clearTokens()
+        isRefreshing = false;
+        processQueue(refreshError, null);
+        tokenService.clearTokens();
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
         }
-        throw refreshError
+        throw refreshError;
       }
     }
 
-    return handleResponse(response)
+    return handleResponse(response);
   } catch (error) {
     if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-      const networkError = new Error('Network error - please check your connection')
-      networkError.status = 0
-      networkError.code = 'NETWORK_ERROR'
-      throw networkError
+      // If CORS is the issue, try with a proxy
+      if (error.message.includes('Failed to fetch') && !API_BASE_URL.includes('cors-anywhere')) {
+        console.warn('CORS error detected, trying with proxy...');
+        // Retry with CORS proxy
+        const proxyUrl = `https://cors-anywhere.herokuapp.com/${API_BASE_URL}${normalizedEndpoint}`;
+        const proxyConfig = { ...config };
+        proxyConfig.headers['Origin'] = window.location.origin;
+        
+        try {
+          const proxyResponse = await fetch(proxyUrl, proxyConfig);
+          return handleResponse(proxyResponse);
+        } catch (proxyError) {
+          // Fall through to network error
+        }
+      }
+      
+      const networkError = new Error('Network error - please check your connection');
+      networkError.status = 0;
+      networkError.code = 'NETWORK_ERROR';
+      throw networkError;
     }
     
-    console.error(`❌ API Error [${endpoint}]:`, error)
-    throw error
+    console.error(`❌ API Error [${endpoint}]:`, error);
+    throw error;
   }
-}
+};
 
 // ============================================================
 // AUTHENTICATION SERVICES
@@ -222,13 +277,14 @@ export const authService = {
       body: passwordData,
     }),
   getUsers: (params = {}) => request(`/auth/users/${buildQueryString(params)}`),
-}
+};
 
 // ============================================================
 // STORE SERVICES
 // ============================================================
 
 export const storeService = {
+  // Product endpoints
   getProducts: (params = {}) =>
     request(`/store/products/${buildQueryString(params)}`, {
       includeAuth: false,
@@ -283,8 +339,59 @@ export const storeService = {
       body: data,
     }),
 
+  // Filter endpoints
   getCategories: () =>
     request('/store/categories/', {
+      includeAuth: false,
+    }),
+
+  getValueChainStages: () =>
+    request('/store/value-chain-stages/', {
+      includeAuth: false,
+    }),
+
+  getTechnologies: () =>
+    request('/store/technologies/', {
+      includeAuth: false,
+    }),
+
+  getDeliveryChannels: () =>
+    request('/store/delivery-channels/', {
+      includeAuth: false,
+    }),
+
+  getTargetUsers: () =>
+    request('/store/target-users/', {
+      includeAuth: false,
+    }),
+
+  getSubsectors: () =>
+    request('/store/subsectors/', {
+      includeAuth: false,
+    }),
+
+  getValueChains: () =>
+    request('/store/value-chains/', {
+      includeAuth: false,
+    }),
+
+  getGeographicCoverage: () =>
+    request('/store/geographic-coverage/', {
+      includeAuth: false,
+    }),
+
+  getProviders: (params = {}) =>
+    request(`/store/providers/${buildQueryString(params)}`, {
+      includeAuth: false,
+    }),
+
+  getProviderById: (id) =>
+    request(`/store/providers/${id}/`, {
+      includeAuth: false,
+    }),
+
+  getFilterOptions: () =>
+    request('/store/filter-options/', {
       includeAuth: false,
     }),
 
@@ -292,7 +399,7 @@ export const storeService = {
     request('/store/stats/', {
       includeAuth: false,
     }),
-}
+};
 
 // ============================================================
 // PRODUCTS SERVICES (Admin/CMS)
@@ -303,7 +410,7 @@ export const productService = {
   getProductBySlug: (slug) => request(`/products/${slug}/`),
   getCategories: () => request('/categories/', { includeAuth: false }),
   getFeaturedProducts: () => request('/products/featured/'),
-}
+};
 
 // ============================================================
 // TOKEN MANAGEMENT
@@ -314,44 +421,47 @@ export const tokenService = {
   getRefreshToken: () => localStorage.getItem('refresh_token'),
   setTokens: (tokens) => {
     if (tokens.access) {
-      localStorage.setItem('access_token', tokens.access)
+      localStorage.setItem('access_token', tokens.access);
     }
     if (tokens.refresh) {
-      localStorage.setItem('refresh_token', tokens.refresh)
+      localStorage.setItem('refresh_token', tokens.refresh);
     }
   },
   clearTokens: () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
   },
   isAuthenticated: () => !!localStorage.getItem('access_token'),
   refresh: async () => {
-    const refreshToken = localStorage.getItem('refresh_token')
+    const refreshToken = localStorage.getItem('refresh_token');
     if (!refreshToken) {
-      throw new Error('No refresh token available')
+      throw new Error('No refresh token available');
     }
-    const response = await authService.refreshToken(refreshToken)
+    const response = await authService.refreshToken(refreshToken);
     if (response.access) {
-      tokenService.setTokens({ access: response.access })
-      return response
+      tokenService.setTokens({ access: response.access });
+      return response;
     }
-    throw new Error('Failed to refresh token')
+    throw new Error('Failed to refresh token');
   },
-}
+};
 
 // ============================================================
 // ERROR HANDLING UTILITIES
 // ============================================================
 
-export const isNetworkError = (error) => error?.code === 'NETWORK_ERROR' || error?.status === 0
-export const isAuthError = (error) => error?.status === 401
-export const isNotFoundError = (error) => error?.status === 404
+export const isNetworkError = (error) => error?.code === 'NETWORK_ERROR' || error?.status === 0;
+export const isAuthError = (error) => error?.status === 401;
+export const isNotFoundError = (error) => error?.status === 404;
+export const isCorsError = (error) => error?.message?.includes('CORS') || error?.message?.includes('NetworkError');
+
 export const getErrorMessage = (error, fallback = 'An error occurred') => {
-  if (isNetworkError(error)) return 'Network error - please check your connection'
-  if (isAuthError(error)) return 'Your session has expired. Please login again.'
-  if (isNotFoundError(error)) return 'The requested resource was not found'
-  return error?.message || fallback
-}
+  if (isNetworkError(error)) return 'Network error - please check your connection';
+  if (isAuthError(error)) return 'Your session has expired. Please login again.';
+  if (isNotFoundError(error)) return 'The requested resource was not found';
+  if (isCorsError(error)) return 'CORS error - please contact support or try again later';
+  return error?.message || fallback;
+};
 
 // ============================================================
 // EXPORT DEFAULT BUNDLE
@@ -365,5 +475,6 @@ export default {
   isNetworkError,
   isAuthError,
   isNotFoundError,
+  isCorsError,
   getErrorMessage,
-}
+};

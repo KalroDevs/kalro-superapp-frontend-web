@@ -17,7 +17,7 @@ const SubNav = ({ onStoreClick }) => {
     <nav className="subnav" aria-label="Quick navigation">
       <div className="container row">
         <ul className="sublinks">
-          <li>
+          {/* <li>
             <a href="#how">{t('howItWorks')} <FontAwesomeIcon icon={faChevronDown} /></a>
             <div className="sub-dropdown">
               <div className="sub-label">{t('overview')}</div>
@@ -65,16 +65,16 @@ const SubNav = ({ onStoreClick }) => {
               <a href="#faq">{t('technicalHelp')}</a>
               <a href="#faq">{t('contactSupport')}</a>
             </div>
-          </li>
+          </li> */} 
           <li>
-            <a href="#" onClick={handleStoreClick}>
+            <a href="/store" onClick={handleStoreClick}>
               <FontAwesomeIcon icon={faStore} /> App Store
             </a>
           </li>
         </ul>
         <div className="actions">
-          <a className="btn outline" href="#s" onClick={handleStoreClick}>{t('exploreServices')}</a>
-          <a className="btn primary" href="#" onClick={handleStoreClick}><FontAwesomeIcon icon={faArrowRight} /> {t('startNow')}</a>
+          <a className="btn outline" href="/store" onClick={handleStoreClick}>{t('exploreServices')}</a>
+          <a className="btn primary" href="/store" onClick={handleStoreClick}><FontAwesomeIcon icon={faArrowRight} /> {t('startNow')}</a>
         </div>
       </div>
     </nav>

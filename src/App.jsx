@@ -1,90 +1,150 @@
-import React, { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
-import { AuthProvider } from './context/AuthContext'
+import React, { useEffect, useState } from 'react'
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom'
+
 import { ApiProvider } from './context/ApiContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
+
 import AccessibilityBar from './components/AccessibilityBar'
 import Header from './components/Header'
 import SubNav from './components/SubNav'
 import Hero from './components/Hero'
-import RoleTabs from './components/RoleTabs'
-import HowItWorks from './components/HowItWorks'
-import Updates from './components/Updates'
-import Services from './components/Services'
-import CTA from './components/CTA'
+import FeaturedProducts from './components/FeaturedProducts'
 import FAQ from './components/FAQ'
 import Footer from './components/Footer'
+
 import Store from './pages/Store'
 import ProductDetail from './pages/ProductDetail'
 import AuthPage from './pages/AuthPage'
-import { useLanguage } from './context/LanguageContext'
-import { useAuth } from './context/AuthContext'
-import HeroSearch from './components/HeroSearch'
 
 
 function AppContent() {
-  const { currentLanguage } = useLanguage()
   const { isAuthenticated, user } = useAuth()
+
   const location = useLocation()
+  const navigate = useNavigate()
+
   const [currentPage, setCurrentPage] = useState('home')
+
+
+  // ----------------------------------------------------------
+  // Detect current page from query parameters
+  // ----------------------------------------------------------
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const page = params.get('page')
+
     if (page === 'store') {
       setCurrentPage('store')
     } else {
       setCurrentPage('home')
     }
-  }, [location])
+  }, [location.search])
+
+
+  // ----------------------------------------------------------
+  // Navigation helpers
+  // ----------------------------------------------------------
 
   const navigateToStore = () => {
-    window.history.pushState({}, '', '/?page=store')
-    setCurrentPage('store')
+    navigate('/?page=store')
   }
 
-  // Check if we're on auth page (login or register)
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
-  
-  // Check if we're on product detail page
-  const isProductPage = location.pathname.startsWith('/product/')
+
+  // ----------------------------------------------------------
+  // Route detection
+  // ----------------------------------------------------------
+
+  const isAuthPage =
+    location.pathname === '/login' ||
+    location.pathname === '/register'
+
+  const isProductPage =
+    location.pathname.startsWith('/product/')
+
+
+  // ----------------------------------------------------------
+  // Page content
+  // ----------------------------------------------------------
+
+  const renderContent = () => {
+    // Authentication pages
+    if (isAuthPage) {
+      return (
+        <Routes>
+          <Route
+            path="/login"
+            element={<AuthPage />}
+          />
+
+          <Route
+            path="/register"
+            element={<AuthPage />}
+          />
+        </Routes>
+      )
+    }
+
+
+    // Product detail
+    if (isProductPage) {
+      return (
+        <Routes>
+          <Route
+            path="/product/:slug"
+            element={<ProductDetail />}
+          />
+        </Routes>
+      )
+    }
+
+
+    // Store catalogue
+    if (currentPage === 'store') {
+      return <Store />
+    }
+
+
+    // Home page
+    return (
+      <main>
+        <Hero />
+
+        {/* <FeaturedProducts /> */}
+
+        <FAQ />
+      </main>
+    )
+  }
+
 
   return (
-    <div>
+    <div className="app">
       <AccessibilityBar />
-      <Header onStoreClick={navigateToStore} isAuthenticated={isAuthenticated} user={user} />
-      <SubNav onStoreClick={navigateToStore} />
-      
-      {isAuthPage ? (
-        <Routes>
-          <Route path="/login" element={<AuthPage />} />
-          <Route path="/register" element={<AuthPage />} />
-        </Routes>
-      ) : isProductPage ? (
-        <Routes>
-          {/* <Route path="/product/:id" element={<ProductDetail />} /> */}
-          <Route path="/product/:slug" element={<ProductDetail />} />
-        </Routes>
-      ) : currentPage === 'store' ? (
-        <Store />
-      ) : (
-        <main>
-          
-          <Hero />
-          <HeroSearch />
-          {/* <RoleTabs /> */}
-          
-          {/* <HowItWorks /> */}
-          {/* <Updates /> */}
-          {/* <Services /> */}
-          {/* <CTA /> */}
-          <FAQ />
-        </main>
-      )}
-      
+
+      <Header
+        onStoreClick={navigateToStore}
+        isAuthenticated={isAuthenticated}
+        user={user}
+      />
+
+      <SubNav
+        onStoreClick={navigateToStore}
+      />
+
+      {renderContent()}
+
       <Footer />
     </div>
   )
 }
+
 
 function App() {
   return (
@@ -97,5 +157,6 @@ function App() {
     </Router>
   )
 }
+
 
 export default App

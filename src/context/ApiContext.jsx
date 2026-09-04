@@ -24,8 +24,9 @@ export const ApiProvider = ({ children }) => {
     getUsers: (...args) => api.auth.getUsers(...args),
   }), [])
 
-  // Store API methods
+  // Store API methods - Complete with all filter endpoints
   const store = useMemo(() => ({
+    // Product endpoints
     getProducts: (...args) => api.store.getProducts(...args),
     getFeaturedProducts: (...args) => api.store.getFeaturedProducts(...args),
     getProductBySlug: (...args) => api.store.getProductBySlug(...args),
@@ -37,7 +38,19 @@ export const ApiProvider = ({ children }) => {
     toggleFavorite: (...args) => api.store.toggleFavorite(...args),
     getFavorites: (...args) => api.store.getFavorites(...args),
     trackDownload: (...args) => api.store.trackDownload(...args),
+    
+    // Filter endpoints
     getCategories: (...args) => api.store.getCategories(...args),
+    getValueChainStages: (...args) => api.store.getValueChainStages(...args),
+    getTechnologies: (...args) => api.store.getTechnologies(...args),
+    getDeliveryChannels: (...args) => api.store.getDeliveryChannels(...args),
+    getTargetUsers: (...args) => api.store.getTargetUsers(...args),
+    getSubsectors: (...args) => api.store.getSubsectors(...args),
+    getValueChains: (...args) => api.store.getValueChains(...args),
+    getGeographicCoverage: (...args) => api.store.getGeographicCoverage(...args),
+    getProviders: (...args) => api.store.getProviders(...args),
+    getProviderById: (...args) => api.store.getProviderById(...args),
+    getFilterOptions: (...args) => api.store.getFilterOptions(...args),
     getStats: (...args) => api.store.getStats(...args),
   }), [])
 

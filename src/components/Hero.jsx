@@ -1,110 +1,314 @@
-import React, { useState, useEffect } from 'react'
+// Hero.jsx
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faLeaf, faArrowRight, faChevronRight } from '@fortawesome/free-solid-svg-icons'
+import {
+  faArrowRight,
+  faBolt,
+  faChartLine,
+  faCloudSun,
+  faDatabase,
+  faLeaf,
+  faMicrophone,
+  faRobot,
+  faSearch,
+  faSeedling,
+  faShieldHalved,
+  faStar,
+  faTrowel,
+} from '@fortawesome/free-solid-svg-icons'
+import { Link, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
+import FeaturedProducts from './FeaturedProducts'
+import SearchModal from './SearchModal'
+import './Hero.css'
 
 const Hero = () => {
   const { t } = useLanguage()
-  const words = ['Customer orientation', 'Professionalism', 'Innovativeness', 'Collaboration', 'Environmental consciousness', 'Integrity']
+  const navigate = useNavigate()
+  const searchInputRef = useRef(null)
+
+  // Search Modal State
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const words = useMemo(
+    () => [
+      'Digital Agriculture',
+      'Digital Products/Services',
+      'Smart Advisory',
+      'Agricultural Data',
+      'AI Innovation',
+    ],
+    []
+  )
+
   const [text, setText] = useState('')
   const [index, setIndex] = useState(0)
   const [isDeleting, setIsDeleting] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
-  const [imageError, setImageError] = useState(false)
 
+  // Typing animation
   useEffect(() => {
     const currentWord = words[index % words.length]
+    const delay = isDeleting ? 45 : 85
     let timeout
 
     if (!isDeleting && text !== currentWord) {
       timeout = setTimeout(() => {
-        setText(currentWord.substring(0, text.length + 1))
-      }, 100)
+        setText(currentWord.slice(0, text.length + 1))
+      }, delay)
     } else if (!isDeleting && text === currentWord) {
-      timeout = setTimeout(() => {
-        setIsDeleting(true)
-      }, 2000)
+      timeout = setTimeout(() => setIsDeleting(true), 1600)
     } else if (isDeleting && text !== '') {
       timeout = setTimeout(() => {
-        setText(currentWord.substring(0, text.length - 1))
-      }, 50)
-    } else if (isDeleting && text === '') {
+        setText(currentWord.slice(0, text.length - 1))
+      }, delay)
+    } else {
       setIsDeleting(false)
-      setIndex(index + 1)
+      setIndex((value) => value + 1)
     }
 
     return () => clearTimeout(timeout)
   }, [text, isDeleting, index, words])
 
+  // Load background image
   useEffect(() => {
     const img = new Image()
     img.src = '/images/background.png'
-    img.onload = () => {
-      console.log('Image loaded successfully')
-      setImageLoaded(true)
-    }
-    img.onerror = () => {
-      console.warn('Image failed to load')
-      setImageError(true)
-    }
+    img.onload = () => setImageLoaded(true)
   }, [])
 
-  const heroStyle = {
-    backgroundImage: imageLoaded ? 'url(/images/background.png)' : 'none',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
-    backgroundColor: '#faf9f8',
-    minHeight: '540px',
-    display: 'flex',
-    alignItems: 'center',
-    padding: '40px 0 60px',
-    position: 'relative',
-    overflow: 'hidden'
+  // Search Modal handlers
+  const openSearch = () => {
+    setIsSearchOpen(true)
+    document.body.style.overflow = 'hidden'
   }
 
+  const closeSearch = () => {
+    setIsSearchOpen(false)
+    document.body.style.overflow = ''
+  }
+
+  // Handle search submission - opens modal instead of navigating
+  const handleSearchSubmit = (event) => {
+    event.preventDefault()
+    if (searchQuery.trim()) {
+      openSearch()
+    }
+  }
+
+  // Handle quick action clicks - opens modal with query
+  const handleQuickAction = (query) => {
+    setSearchQuery(query)
+    openSearch()
+  }
+
+  // Handle category tag clicks - opens modal with query
+  const handleCategoryClick = (item) => {
+    setSearchQuery(item)
+    openSearch()
+  }
+
+  const quickActions = [
+    // { label: 'Weather', query: 'Weather Advisory', icon: faCloudSun },
+    // { label: 'Crops', query: 'Crop Selector', icon: faSeedling },
+    // { label: 'Markets', query: 'Market Prices', icon: faChartLine },
+    // { label: 'Soil', query: 'Soil Health', icon: faTrowel },
+    // { label: 'AI Advisor', query: 'AI Farm Advisor', icon: faRobot },
+  ]
+
+  const popular = [
+    'Advisory & AI',
+    'Climate & Weather',
+    'Markets & Agribusiness',
+    'Data & AI Platform',
+  ]
+
+  const heroStyle = imageLoaded
+    ? { '--hero-background-image': "url('/images/background.png')" }
+    : {}
+
   return (
-    <section className="hero" style={heroStyle}>
-      {/* Overlay without blur - keeps image sharp */}
-      <div className="hero-overlay" style={{ 
-        background: 'rgba(255, 255, 255, 0.75)',
-        // Remove backdrop-filter to prevent blur
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 1
-      }}></div>
-      
-      <div className="container hero-grid" style={{ position: 'relative', zIndex: 2 }}>
-        <div className="hero-content">
-          <span className="tag">
-            <FontAwesomeIcon icon={faLeaf} style={{ marginRight: '6px' }} /> 
-            {t('tagLine')}
-          </span>
-          <div className="slide-text">
-            <h3>
-              {t('coreValues')}{' '}
-              <a href="#" className="typewrite">
-                <span className="wrap">{text}</span>
-              </a>
-            </h3>
-            <h1>{t('heroTitle')}</h1>
-            <p>{t('heroDescription')}</p>
-          </div>
-          <div className="hero-actions">
-            <a className="btn primary" href="#start">
-              <FontAwesomeIcon icon={faArrowRight} /> {t('getRecommendation')}
-            </a>
-            <a className="btn link" href="#services">
-              {t('exploreSuperapp')} <FontAwesomeIcon icon={faChevronRight} />
-            </a>
+    <>
+      <section className="hero-future" style={heroStyle}>
+        <div className="hero-future-grid" aria-hidden="true" />
+        <div className="hero-orb hero-orb-one" aria-hidden="true" />
+        <div className="hero-orb hero-orb-two" aria-hidden="true" />
+
+        <div className="container hero-future-container">
+          <div className="hero-future-layout">
+            <div className="hero-future-copy">
+              <div className="hero-kicker">
+                
+                {/* <span>{t('tagLine') || 'Kenya Agriculture Digital Catalogue'}</span>
+                <span className="hero-live-dot" aria-hidden="true" /> */}
+              </div>
+
+              &nbsp;
+
+              <div className="hero-intelligence-pill">
+                <FontAwesomeIcon icon={faStar} />
+                <span>Discover</span>
+                <strong>{text || 'Digital Agriculture'}</strong>
+              </div>
+
+              <h1>
+                Kenya's digital gateway to
+                <span className="hero-gradient-text"> smarter agriculture.</span>
+              </h1>
+
+              <p className="hero-lead">
+                Discover trusted digital products, data platforms, advisory services,
+                agricultural technologies and interoperable solutions built for farmers,
+                researchers, counties, agribusinesses and institutions.
+              </p>
+
+              <div className="hero-trust-row" aria-label="Catalogue characteristics">
+                <span><FontAwesomeIcon icon={faShieldHalved} /> Trusted solutions</span>
+                <span><FontAwesomeIcon icon={faDatabase} /> Data-enabled</span>
+                <span><FontAwesomeIcon icon={faBolt} /> Built for action</span>
+              </div>
+
+              <div className="hero-search-shell">
+                <form onSubmit={handleSearchSubmit} className="hero-search-form">
+                  <div className="hero-search-bar">
+                    <div className="hero-search-icon-wrap">
+                      <FontAwesomeIcon icon={faSearch} />
+                    </div>
+
+                    <input
+                      ref={searchInputRef}
+                      type="search"
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Search products, technologies, services, advisories..."
+                      className="hero-search-input"
+                      aria-label="Search digital agriculture catalogue"
+                      onClick={openSearch}
+                      readOnly
+                    />
+
+                    <button
+                      type="button"
+                      className="search-voice-btn"
+                      aria-label="Voice search"
+                      onClick={openSearch}
+                    >
+                      <FontAwesomeIcon icon={faMicrophone} />
+                    </button>
+
+                    <button type="submit" className="search-submit-btn" onClick={openSearch}>
+                      <span>Search catalogue</span>
+                      <FontAwesomeIcon icon={faArrowRight} />
+                    </button>
+                  </div>
+                </form>
+
+                <div className="hero-search-quick-actions">
+                  {quickActions.map((action) => (
+                    <button
+                      key={action.label}
+                      type="button"
+                      className="quick-action-btn"
+                      onClick={() => handleQuickAction(action.query)}
+                    >
+                      <FontAwesomeIcon icon={action.icon} />
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="hero-bottom-row">
+                <div className="hero-search-categories">
+                  {/* <span className="categories-label">Popular searches</span>
+                  <div className="categories-tags">
+                    {popular.map((item) => (
+                      <button
+                        type="button"
+                        className="category-tag"
+                        key={item}
+                        onClick={() => handleCategoryClick(item)}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div> */}
+                </div>
+
+                <Link to="/?page=store" className="hero-explore-link">
+                  Explore full catalogue
+                  <FontAwesomeIcon icon={faArrowRight} />
+                </Link>
+              </div>
+            </div>
+
+            <div className="hero-visual" aria-hidden="true">
+              <div className="hero-visual-halo" />
+
+              {/* <div className="hero-console">
+                <div className="hero-console-topbar">
+                  <span className="console-dot" />
+                  <span className="console-dot" />
+                  <span className="console-dot" />
+                  <span className="console-label">Agriculture Intelligence Layer</span>
+                </div>
+
+                <div className="hero-console-body">
+                  <div className="hero-console-map">
+                    <div className="map-ring map-ring-one" />
+                    <div className="map-ring map-ring-two" />
+                    <div className="map-core">
+                      <FontAwesomeIcon icon={faLeaf} />
+                    </div>
+                    <span className="map-node node-one" />
+                    <span className="map-node node-two" />
+                    <span className="map-node node-three" />
+                  </div>
+
+                  <div className="hero-console-stats">
+                    <div className="console-stat">
+                      <small>Discover</small>
+                      <strong>Digital Products/Services</strong>
+                      <span>Digital public services</span>
+                    </div>
+                    <div className="console-stat">
+                      <small>Connect</small>
+                      <strong>Data + APIs</strong>
+                      <span>Interoperable agriculture</span>
+                    </div>
+                    <div className="console-stat">
+                      <small>Decide</small>
+                      <strong>Insights</strong>
+                      <span>Evidence-led action</span>
+                    </div>
+                  </div>
+                </div>
+              </div> */}
+
+              {/* <div className="floating-chip floating-chip-one">
+                <FontAwesomeIcon icon={faCloudSun} /> Climate intelligence
+              </div>
+              <div className="floating-chip floating-chip-two">
+                <FontAwesomeIcon icon={faRobot} /> AI advisory
+              </div>
+              <div className="floating-chip floating-chip-three">
+                <FontAwesomeIcon icon={faChartLine} /> Market intelligence
+              </div> */}
+            </div>
           </div>
         </div>
-    
-      </div>
-    </section>
+      </section>
+
+      <FeaturedProducts />
+
+      {/* Search Modal - Same as Header */}
+      <SearchModal 
+        isOpen={isSearchOpen} 
+        onClose={closeSearch} 
+        initialQuery={searchQuery}
+      />
+    </>
   )
 }
 

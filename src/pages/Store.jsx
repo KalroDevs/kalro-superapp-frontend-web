@@ -1,880 +1,989 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { 
-  faStar, faDownload, faArrowRight, faThLarge, faSlidersH,
-  faRobot, faCloudSun, faTrowel, faBug, faBook, faStore,
-  faIdCard, faMicroscope, faLightbulb, faSatelliteDish, faCoins,
-  faQrcode, faChartPie, faCloud, faSeedling, faMap, faChartLine,
-  faHorseHead, faLeaf, faCalendarAlt, faExclamationTriangle,
-  faDisease, faChalkboardTeacher, faLink as faLinkIcon, faPlug, faVial,
-  faDatabase, faSearch, faFilter, faSpinner, faCheckCircle,
-  faShieldAlt, faGlobe, faImage, faThList, faChevronLeft, faChevronRight,
-  faTimes, faSort, faSortUp, faSortDown, faEye, faClock, faTag,
-  faMobile, faDesktop, faExternalLinkAlt, faBars
-} from '@fortawesome/free-solid-svg-icons'
-import { 
-  faAndroid, faApple
-} from '@fortawesome/free-brands-svg-icons'
-import { useLanguage } from '../context/LanguageContext'
-import { useAccessibility } from '../context/AccessibilityContext'
-import { useApi } from '../context/ApiContext'
-import './Store.css'
+// Store.jsx
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useApi } from '../context/ApiContext';
+import './Store.css';
+
+// Icons
+const SearchIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>;
+const GridIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>;
+const ListIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>;
+const FilterIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>;
+const CloseIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const StarIcon = ({ filled = false }) => filled ? 
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="#e4a400" stroke="#e4a400" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> :
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d7ddd9" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+const ChevronDownIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>;
+const ChevronRightIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 6 15 12 9 18"/></svg>;
+const RefreshIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>;
+const ExternalLinkIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>;
+
+// Debounce hook
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+};
+
+// Filter Accordion component
+const FilterAccordion = ({ title, children, isOpen, onToggle, count }) => (
+  <div className="filter-accordion">
+    <button 
+      className="filter-accordion-header" 
+      onClick={onToggle}
+      aria-expanded={isOpen}
+    >
+      <span>
+        {title}
+        {count > 0 && <span className="filter-count">{count}</span>}
+      </span>
+      {isOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
+    </button>
+    {isOpen && <div className="filter-accordion-content">{children}</div>}
+  </div>
+);
+
+// Filter label mapping for display
+const FILTER_LABELS = {
+  category: 'Category',
+  value_chain_stage: 'Value Chain Stage',
+  technology: 'Technology',
+  delivery_channel: 'Delivery Channel',
+  target_user: 'Target User',
+  subsector: 'Subsector',
+  value_chain: 'Value Chain',
+  geographic_coverage: 'Region',
+  provider: 'Provider',
+  min_rating: 'Minimum Rating',
+  is_verified: 'Verified',
+  has_digital_content: 'Digital Content'
+};
 
 const Store = () => {
-  const { t, currentLanguage } = useLanguage()
-  const { highContrast } = useAccessibility()
-  const { store, fetchWithErrorHandling } = useApi()
+  const { store } = useApi();
+  const navigate = useNavigate();
   
-  // View state
-  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
-  const [activeFilter, setActiveFilter] = useState('all')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filteredApps, setFilteredApps] = useState([])
-  const [allApps, setAllApps] = useState([])
-  const [categories, setCategories] = useState([])
-  const [featuredApps, setFeaturedApps] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [imageErrors, setImageErrors] = useState({})
-  const [sortBy, setSortBy] = useState('popular') // 'popular' | 'rating' | 'newest' | 'az' | 'za'
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
-  const [selectedPlatforms, setSelectedPlatforms] = useState([])
-  const [priceRange, setPriceRange] = useState({ min: 0, max: 1000 })
-  const [showOnlyFeatured, setShowOnlyFeatured] = useState(false)
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    next: null,
-    previous: null,
-    pageSize: 12
-  })
+  // State
+  const [products, setProducts] = useState([]);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState('grid');
+  const [activeFilters, setActiveFilters] = useState({});
+  const [filterSidebarOpen, setFilterSidebarOpen] = useState(false);
+  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [stats, setStats] = useState({ total: 0, categories: 0, providers: 0 });
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  
+  // Filter data states
+  const [filterData, setFilterData] = useState({
+    categories: [],
+    valueChainStages: [],
+    technologies: [],
+    deliveryChannels: [],
+    targetUsers: [],
+    subsectors: [],
+    valueChains: [],
+    geographicCoverage: [],
+    providers: [],
+    filterOptions: {}
+  });
+  
+  // Accordion state
+  const [openAccordions, setOpenAccordions] = useState({
+    categories: true,
+    valueChainStages: false,
+    technologies: false,
+    deliveryChannels: false,
+    targetUsers: false,
+    subsectors: false,
+    valueChains: false,
+    geographicCoverage: false,
+    providers: false,
+    additional: false
+  });
 
-  // Refs
-  const filterPanelRef = useRef(null)
-  const searchInputRef = useRef(null)
+  const debouncedSearch = useDebounce(searchQuery, 500);
+  const initialLoadDone = useRef(false);
 
-  // Fallback image
-  const FALLBACK_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200"%3E%3Crect width="300" height="200" fill="%23009640"/%3E%3Ctext x="150" y="100" font-family="Arial" font-size="18" fill="white" text-anchor="middle"%3EKALRO%3C/text%3E%3Ctext x="150" y="125" font-family="Arial" font-size="12" fill="%23dff6dd" text-anchor="middle"%3EApp%3C/text%3E%3C/svg%3E'
-
-  // Handle image error
-  const handleImageError = (appId) => {
-    setImageErrors(prev => ({ ...prev, [appId]: true }))
-  }
-
-  // Get screenshot URL with fallback
-  const getScreenshotUrl = (app) => {
-    if (imageErrors[app.id]) {
-      return FALLBACK_IMAGE
-    }
-    if (app.screenshots && app.screenshots.length > 0) {
-      return app.screenshots[0].image_url || app.screenshots[0].image || FALLBACK_IMAGE
-    }
-    return FALLBACK_IMAGE
-  }
-
-  // Check if product has screenshots
-  const hasScreenshots = (app) => {
-    return app.screenshots && app.screenshots.length > 0
-  }
-
-  // Fetch data from API
+  // Monitor online status
   useEffect(() => {
-    const fetchStoreData = async () => {
-      setLoading(true)
-      setError(null)
-      
-      try {
-        // 1. Fetch categories
-        const categoriesResult = await fetchWithErrorHandling(
-          () => store.getCategories(),
-          'Failed to load categories'
-        )
-        
-        let categoriesData = []
-        if (categoriesResult.success && categoriesResult.data) {
-          categoriesData = Array.isArray(categoriesResult.data) 
-            ? categoriesResult.data 
-            : categoriesResult.data.results || []
-          setCategories(categoriesData)
-        }
-        
-        // 2. Fetch products with filters
-        const params = {}
-        if (activeFilter !== 'all') {
-          params.category = activeFilter
-        }
-        if (searchQuery) {
-          params.search = searchQuery
-        }
-        if (showOnlyFeatured) {
-          params.is_featured = true
-        }
-        
-        const productsResult = await fetchWithErrorHandling(
-          () => store.getProducts({ 
-            ...params, 
-            page: pagination.currentPage, 
-            page_size: pagination.pageSize 
-          }),
-          'Failed to load products'
-        )
-        
-        if (productsResult.success && productsResult.data) {
-          const productData = productsResult.data
-          const items = productData.results || productData || []
-          setAllApps(items)
-          setFilteredApps(items)
-          
-          if (productData.results) {
-            setPagination(prev => ({
-              ...prev,
-              totalPages: Math.ceil(productData.count / prev.pageSize) || 1,
-              totalItems: productData.count || items.length,
-              next: productData.next,
-              previous: productData.previous
-            }))
-          }
-        } else {
-          setError('Failed to load products')
-          setAllApps(fallbackProducts)
-          setFilteredApps(fallbackProducts)
-          setCategories(fallbackCategories)
-        }
-        
-        // 3. Fetch featured products
-        const featuredResult = await fetchWithErrorHandling(
-          () => store.getFeaturedProducts({ page_size: 6 }),
-          'Failed to load featured products'
-        )
-        
-        if (featuredResult.success && featuredResult.data) {
-          const featuredData = featuredResult.data
-          if (featuredData.results) {
-            setFeaturedApps(featuredData.results)
-          } else if (Array.isArray(featuredData)) {
-            setFeaturedApps(featuredData)
-          } else {
-            setFeaturedApps(fallbackFeatured)
-          }
-        } else {
-          setFeaturedApps(fallbackFeatured)
-        }
-        
-      } catch (err) {
-        console.error('Error fetching store data:', err)
-        setError('Unable to load store data. Please refresh the page.')
-        setAllApps(fallbackProducts)
-        setFilteredApps(fallbackProducts)
-        setCategories(fallbackCategories)
-        setFeaturedApps(fallbackFeatured)
-      } finally {
-        setLoading(false)
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (initialLoadDone.current) {
+        fetchAllData();
       }
+    };
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Fetch all filter data on mount
+  const fetchFilterData = useCallback(async () => {
+    try {
+      const [
+        categories,
+        valueChainStages,
+        technologies,
+        deliveryChannels,
+        targetUsers,
+        subsectors,
+        valueChains,
+        geographicCoverage,
+        providers,
+        filterOptions
+      ] = await Promise.allSettled([
+        store.getCategories().catch(() => []),
+        store.getValueChainStages().catch(() => []),
+        store.getTechnologies().catch(() => []),
+        store.getDeliveryChannels().catch(() => []),
+        store.getTargetUsers().catch(() => []),
+        store.getSubsectors().catch(() => []),
+        store.getValueChains().catch(() => []),
+        store.getGeographicCoverage().catch(() => []),
+        store.getProviders().catch(() => []),
+        store.getFilterOptions().catch(() => ({}))
+      ]);
+
+      const getValue = (result, defaultValue) => 
+        result.status === 'fulfilled' ? result.value : defaultValue;
+
+      const categoriesData = getValue(categories, []);
+      const valueChainStagesData = getValue(valueChainStages, []);
+      const technologiesData = getValue(technologies, []);
+      const deliveryChannelsData = getValue(deliveryChannels, []);
+      const targetUsersData = getValue(targetUsers, []);
+      const subsectorsData = getValue(subsectors, []);
+      const valueChainsData = getValue(valueChains, []);
+      const geographicCoverageData = getValue(geographicCoverage, []);
+      const providersData = getValue(providers, []);
+      const filterOptionsData = getValue(filterOptions, {});
+
+      setFilterData({
+        categories: categoriesData.results || categoriesData || [],
+        valueChainStages: valueChainStagesData.results || valueChainStagesData || [],
+        technologies: technologiesData.results || technologiesData || [],
+        deliveryChannels: deliveryChannelsData.results || deliveryChannelsData || [],
+        targetUsers: targetUsersData.results || targetUsersData || [],
+        subsectors: subsectorsData.results || subsectorsData || [],
+        valueChains: valueChainsData.results || valueChainsData || [],
+        geographicCoverage: geographicCoverageData.results || geographicCoverageData || [],
+        providers: providersData.results || providersData || [],
+        filterOptions: filterOptionsData || {}
+      });
+
+      if (filterOptionsData?.stats) {
+        setStats(filterOptionsData.stats);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch filter data:', err);
+    }
+  }, [store]);
+
+  // Build filter query params
+  const buildFilterParams = useCallback(() => {
+    const params = { 
+      page: pagination.page, 
+      page_size: 12 
+    };
+    
+    const filterMap = {
+      category: 'category',
+      value_chain_stage: 'value_chain_stage',
+      technology: 'technology',
+      delivery_channel: 'delivery_channel',
+      target_user: 'target_user',
+      subsector: 'subsector',
+      value_chain: 'value_chain',
+      geographic_coverage: 'geographic_coverage',
+      provider: 'provider',
+      min_rating: 'min_rating',
+      is_verified: 'is_verified',
+      has_digital_content: 'has_digital_content'
+    };
+
+    Object.entries(activeFilters).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== '') {
+        const apiKey = filterMap[key] || key;
+        params[apiKey] = value;
+      }
+    });
+    
+    if (debouncedSearch) params.search = debouncedSearch;
+    
+    return params;
+  }, [activeFilters, pagination.page, debouncedSearch]);
+
+  // Fetch products
+  const fetchProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!isOnline) {
+        throw new Error('You are offline. Please check your internet connection.');
+      }
+      
+      const params = buildFilterParams();
+      let response;
+      
+      if (debouncedSearch) {
+        response = await store.searchProducts(params);
+      } else {
+        response = await store.getProducts(params);
+      }
+      
+      const productsData = response.results || response || [];
+      setProducts(productsData);
+      
+      if (response.count !== undefined) {
+        setPagination(prev => ({
+          ...prev,
+          total: response.count,
+          totalPages: Math.ceil(response.count / (params.page_size || 12))
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch products:', err);
+      setError(err.message || 'Failed to load products. Please try again.');
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [store, buildFilterParams, debouncedSearch, isOnline]);
+
+  // Fetch featured products
+  const fetchFeaturedProducts = useCallback(async () => {
+    try {
+      if (!isOnline) return;
+      const response = await store.getFeaturedProducts({ limit: 6 });
+      setFeaturedProducts(response.results || response || []);
+    } catch (err) {
+      console.warn('Failed to fetch featured products:', err);
+    }
+  }, [store, isOnline]);
+
+  // Fetch all data
+  const fetchAllData = useCallback(async () => {
+    if (!isOnline) {
+      setError('You are offline. Please check your internet connection.');
+      setLoading(false);
+      return;
     }
     
-    fetchStoreData()
-  }, [activeFilter, searchQuery, pagination.currentPage, showOnlyFeatured])
+    await Promise.all([
+      fetchProducts(),
+      fetchFeaturedProducts(),
+      fetchFilterData()
+    ]);
+  }, [fetchProducts, fetchFeaturedProducts, fetchFilterData, isOnline]);
 
-  // Filter and sort apps locally
+  // Initial load
   useEffect(() => {
-    let filtered = [...allApps]
-    
-    // Category filter
-    if (activeFilter !== 'all') {
-      filtered = filtered.filter(app => {
-        const appCategory = app.category_slug || app.category?.slug || app.category
-        return appCategory === activeFilter
-      })
+    if (!initialLoadDone.current) {
+      fetchAllData();
+      initialLoadDone.current = true;
     }
-    
-    // Search filter
-    if (searchQuery.trim() !== '') {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(app => 
-        (app.title || '').toLowerCase().includes(query) ||
-        (app.short_description || '').toLowerCase().includes(query) ||
-        (app.category_name || '').toLowerCase().includes(query)
-      )
-    }
-    
-    // Featured filter
-    if (showOnlyFeatured) {
-      filtered = filtered.filter(app => app.is_featured)
-    }
-    
-    // Platform filter
-    if (selectedPlatforms.length > 0) {
-      filtered = filtered.filter(app => {
-        const platforms = app.platforms || []
-        return selectedPlatforms.some(p => platforms.includes(p))
-      })
-    }
-    
-    // Sort
-    filtered = sortApps(filtered, sortBy)
-    
-    setFilteredApps(filtered)
-  }, [activeFilter, searchQuery, allApps, sortBy, showOnlyFeatured, selectedPlatforms])
+  }, [fetchAllData]);
 
-  // Sort apps
-  const sortApps = (apps, sortType) => {
-    const sorted = [...apps]
-    switch (sortType) {
-      case 'popular':
-        return sorted.sort((a, b) => {
-          const aDownloads = parseInt(a.downloads_count?.replace(/,/g, '') || 0)
-          const bDownloads = parseInt(b.downloads_count?.replace(/,/g, '') || 0)
-          return bDownloads - aDownloads
-        })
-      case 'rating':
-        return sorted.sort((a, b) => parseFloat(b.rating || 0) - parseFloat(a.rating || 0))
-      case 'newest':
-        return sorted.sort((a, b) => {
-          const aDate = new Date(a.created_at || a.created || 0)
-          const bDate = new Date(b.created_at || b.created || 0)
-          return bDate - aDate
-        })
-      case 'az':
-        return sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''))
-      case 'za':
-        return sorted.sort((a, b) => (b.title || '').localeCompare(a.title || ''))
-      default:
-        return sorted
+  // Fetch on filter/search/page changes
+  useEffect(() => {
+    if (initialLoadDone.current) {
+      const timer = setTimeout(() => {
+        fetchProducts();
+      }, 300);
+      return () => clearTimeout(timer);
     }
-  }
+  }, [fetchProducts]);
 
-  // Handle filter change
-  const handleFilterChange = (categoryId) => {
-    setActiveFilter(categoryId)
-    setPagination(prev => ({ ...prev, currentPage: 1 }))
-    if (window.innerWidth < 768) {
-      setIsFilterOpen(false)
-    }
-  }
+  // Handlers
+  const handleFilterChange = (key, value) => {
+    setActiveFilters(prev => {
+      if (value === null || value === undefined || value === '') {
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [key]: value };
+    });
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
 
-  // Handle search
+  const handleClearFilters = () => {
+    setActiveFilters({});
+    setSearchQuery('');
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  const handlePageChange = (newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSearch = (e) => {
-    setSearchQuery(e.target.value)
-    setPagination(prev => ({ ...prev, currentPage: 1 }))
-  }
+    setSearchQuery(e.target.value);
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
 
-  // Handle page change
-  const handlePageChange = (page) => {
-    setPagination(prev => ({ ...prev, currentPage: page }))
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  const handleRetry = () => {
+    fetchAllData();
+  };
 
-  // Handle view mode toggle
-  const toggleViewMode = (mode) => {
-    setViewMode(mode)
-  }
+  const toggleAccordion = (key) => {
+    setOpenAccordions(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
-  // Handle sort change
-  const handleSortChange = (e) => {
-    setSortBy(e.target.value)
-  }
+  const getActiveFilterCount = (filterKeys) => {
+    return filterKeys.filter(key => activeFilters[key]).length;
+  };
 
-  // Handle platform toggle
-  const togglePlatform = (platform) => {
-    setSelectedPlatforms(prev => 
-      prev.includes(platform) 
-        ? prev.filter(p => p !== platform)
-        : [...prev, platform]
-    )
-  }
-
-  // Clear all filters
-  const clearAllFilters = () => {
-    setActiveFilter('all')
-    setSearchQuery('')
-    setSortBy('popular')
-    setShowOnlyFeatured(false)
-    setSelectedPlatforms([])
-    setPriceRange({ min: 0, max: 1000 })
-    if (searchInputRef.current) {
-      searchInputRef.current.value = ''
+  // Get display label for filter value
+  const getFilterDisplayValue = (key, value) => {
+    if (!value) return value;
+    
+    const lookupMap = {
+      category: filterData.categories,
+      value_chain_stage: filterData.valueChainStages,
+      technology: filterData.technologies,
+      delivery_channel: filterData.deliveryChannels,
+      target_user: filterData.targetUsers,
+      subsector: filterData.subsectors,
+      value_chain: filterData.valueChains,
+      geographic_coverage: filterData.geographicCoverage,
+      provider: filterData.providers
+    };
+    
+    const options = lookupMap[key];
+    if (options) {
+      const found = options.find(opt => String(opt.id) === String(value) || opt.name === value);
+      if (found) return found.name || found.value || value;
     }
-  }
-
-  // Get icon background class
-  const getIconBgClass = (bg) => {
-    const classes = {
-      'green': 'green', 'blue': 'blue', 'orange': 'orange', 'purple': 'purple',
-      'brown': 'brown', 'teal': 'teal', 'indigo': 'indigo', 'cyan': 'cyan',
-      'amber': 'amber', 'deep-purple': 'deep-purple', 'red': 'red'
+    
+    if (key === 'min_rating') {
+      const ratings = { '1': '1+ Stars', '2': '2+ Stars', '3': '3+ Stars', '4': '4+ Stars' };
+      return ratings[value] || value;
     }
-    return classes[bg] || 'green'
-  }
+    if (key === 'is_verified') return value ? 'Verified' : 'Not Verified';
+    if (key === 'has_digital_content') return value ? 'Digital Content' : 'Physical Only';
+    
+    return value;
+  };
 
-  // Render stars
-  const renderStars = (rating) => {
-    const numRating = parseFloat(rating) || 0
-    const fullStars = Math.floor(numRating)
-    const stars = []
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<FontAwesomeIcon key={i} icon={faStar} className="stars" />)
-    }
-    if (numRating % 1 >= 0.5) {
-      stars.push(<FontAwesomeIcon key="half" icon={faStar} className="stars" style={{ opacity: 0.5 }} />)
-    }
-    return stars
-  }
-
-  // Get category label
-  const getCategoryLabel = (app) => {
-    if (app.category_name) {
-      return app.category_name
-    }
-    if (app.category?.name) {
-      return app.category.name
-    }
-    const cat = categories.find(c => c.id === app.category || c.slug === app.category)
-    return cat?.name || 'Uncategorized'
-  }
-
-  // Get badge color
-  const getBadgeColor = (badge) => {
-    const badgeColors = {
-      'Verified Official': 'badge-official',
-      'KALRO Certified': 'badge-certified',
-      'Free Access': 'badge-free',
-      'Popular': 'badge-popular',
-      'Featured': 'badge-featured',
-      'Top': 'badge-top',
-      'New': 'badge-new',
-      'AI-Powered': 'badge-ai'
-    }
-    return badgeColors[badge] || 'badge-default'
-  }
-
-  // Get active filters count
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (activeFilter !== 'all') count++
-    if (searchQuery) count++
-    if (showOnlyFeatured) count++
-    if (selectedPlatforms.length > 0) count++
-    return count
-  }
-
-  // Fallback data
-  const fallbackCategories = [
-    { id: 1, name: 'All', slug: 'all', icon: faThLarge },
-    { id: 2, name: 'Advisory & AI', slug: 'advisory', icon: faRobot },
-    { id: 3, name: 'Markets & Agribusiness', slug: 'markets-agribusiness', icon: faStore },
-    { id: 4, name: 'Farm Decision Support', slug: 'decision-support-systems', icon: faSeedling },
-    { id: 5, name: 'Climate & Weather', slug: 'climate', icon: faCloudSun },
-    { id: 6, name: 'Soil & Land', slug: 'soil', icon: faTrowel },
-    { id: 7, name: 'Knowledge & Extension', slug: 'knowledge', icon: faBook }
-  ]
-
-  const fallbackProducts = [
-    {
-      id: 1,
-      slug: 'kalro-selector',
-      title: 'KALRO Selector',
-      category_name: 'Farm Decision Support',
-      category_slug: 'decision-support-systems',
-      icon: faSeedling,
-      icon_bg: 'green',
-      short_description: 'An agricultural decision support tool helping Kenyan farmers select suitable crop varieties, livestock breeds, and pasture options based on agro-ecological zones.',
-      rating: '4.5',
-      downloads_count: '45,000',
-      badges: ['Verified Official', 'KALRO Certified', 'Free Access'],
-      is_featured: true,
-      screenshots: [],
-      platforms: ['web', 'android'],
-      created_at: '2024-01-15'
-    },
-    {
-      id: 2,
-      slug: 'kenya-agricultural-management-information-system-k',
-      title: 'Kenya Agricultural Management Information System (KAMIS)',
-      category_name: 'Markets & Agribusiness',
-      category_slug: 'markets-agribusiness',
-      icon: faSeedling,
-      icon_bg: 'green',
-      short_description: 'Real-time market prices, commodity trends, and trade analytics for agricultural produce across major markets in Kenya.',
-      rating: '4.8',
-      downloads_count: '60,000',
-      badges: ['Verified Official', 'Ministry of Agriculture and Livestock Development', 'Free Access'],
-      is_featured: true,
-      screenshots: [],
-      platforms: ['web'],
-      created_at: '2023-11-20'
-    }
-  ]
-
-  const fallbackFeatured = [
-    {
-      id: 2,
-      slug: 'kenya-agricultural-management-information-system-k',
-      title: 'Kenya Agricultural Management Information System (KAMIS)',
-      icon: faSeedling,
-      gradient: 'linear-gradient(135deg, var(--primary), var(--secondary))',
-      short_description: 'Real-time market prices, commodity trends, and trade analytics for agricultural produce across major markets in Kenya.',
-      badge: 'Featured',
-      productId: 2,
-      screenshots: []
-    },
-    {
-      id: 1,
-      slug: 'kalro-selector',
-      title: 'KALRO Selector',
-      icon: faSeedling,
-      gradient: 'linear-gradient(135deg, #0067b8, #50e6ff)',
-      short_description: 'An agricultural decision support tool helping Kenyan farmers select suitable crop varieties, livestock breeds, and pasture options.',
-      badge: 'Popular',
-      productId: 1,
-      screenshots: []
-    }
-  ]
-
-  if (loading) {
+  const renderSelectFilter = (key, label, options, placeholder = `All ${label}s`) => {
+    if (!options || options.length === 0) return null;
+    
     return (
-      <main className="store-page">
-        <div className="container">
-          <div className="loading-state">
-            <div className="loading-spinner">
-              <FontAwesomeIcon icon={faSpinner} spin size="3x" />
-            </div>
-            <p className="loading-text">Loading products...</p>
-            <div className="loading-skeleton-grid">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="skeleton-card">
-                  <div className="skeleton-image"></div>
-                  <div className="skeleton-content">
-                    <div className="skeleton-title"></div>
-                    <div className="skeleton-text"></div>
-                    <div className="skeleton-text short"></div>
+      <div className="filter-field">
+        <label htmlFor={`filter-${key}`}>{label}</label>
+        <select
+          id={`filter-${key}`}
+          value={activeFilters[key] || ''}
+          onChange={(e) => handleFilterChange(key, e.target.value)}
+        >
+          <option value="">{placeholder}</option>
+          {options.map(option => (
+            <option key={option.id || option} value={option.id || option}>
+              {option.name || option}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  };
+
+  // Handle product card click
+  const handleProductClick = (slug) => {
+    navigate(`/product/${slug}`);
+  };
+
+  // Render product card with link
+  const renderProductCard = (product) => {
+    // Map API fields to display fields
+    const imageUrl = product.image_url || product.image || null;
+    const productName = product.title || product.name || 'Product';
+    const categoryName = product.category_name || product.category?.name || 'Uncategorized';
+    const providerName = product.provider_name || product.provider?.name || '';
+    const description = product.short_description || product.description || 'No description available';
+    const rating = parseFloat(product.rating) || 0;
+    const reviewCount = parseInt(product.reviews_count) || 0;
+    const downloadCount = parseInt(product.downloads_count) || parseInt(product.downloads) || 0;
+    const isVerified = product.is_verified || false;
+    const isFeatured = product.is_featured || false;
+    const badges = product.badges || [];
+    const productType = product.product_type || 'product';
+    const slug = product.slug || product.id;
+
+    return (
+      <div 
+        className="product-card" 
+        key={product.id || slug}
+        onClick={() => handleProductClick(slug)}
+        role="link"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleProductClick(slug);
+          }
+        }}
+        aria-label={`View ${productName} details`}
+      >
+        <div className="product-card-media">
+          {imageUrl ? (
+            <img 
+              src={imageUrl} 
+              alt={productName} 
+              loading="lazy"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.parentElement.innerHTML = `
+                  <div class="product-placeholder">
+                    <span>📦</span>
+                    <span>${categoryName}</span>
                   </div>
-                </div>
-              ))}
+                `;
+              }}
+            />
+          ) : (
+            <div className="product-placeholder">
+              <span>📦</span>
+              <span>{categoryName}</span>
             </div>
+          )}
+          <div className="card-badges">
+            {isVerified && (
+              <span className="verified-badge">✓ Verified</span>
+            )}
+            {isFeatured && (
+              <span>⭐ Featured</span>
+            )}
+            {badges.length > 0 && badges.slice(0, 2).map((badge, index) => (
+              <span key={index}>{badge}</span>
+            ))}
           </div>
         </div>
-      </main>
-    )
+        <div className="product-card-body">
+          <div className="product-card-topline">
+            <span className="product-category">{categoryName}</span>
+            <span className="product-type">{productType}</span>
+          </div>
+          <h3>{productName}</h3>
+          {providerName && (
+            <p className="provider-name">by {providerName}</p>
+          )}
+          <p className="product-description">{description}</p>
+          <div className="product-card-footer">
+            <div className="product-meta">
+              {rating > 0 && (
+                <span className="rating">
+                  <span className="stars">
+                    {[...Array(5)].map((_, i) => (
+                      <StarIcon key={i} filled={i < Math.round(rating)} />
+                    ))}
+                  </span>
+                  {rating.toFixed(1)}
+                </span>
+              )}
+              {reviewCount > 0 && (
+                <span>({reviewCount} reviews)</span>
+              )}
+              {downloadCount > 0 && (
+                <span>⬇ {downloadCount.toLocaleString()}</span>
+              )}
+              {product.users_count && parseInt(product.users_count) > 0 && (
+                <span>👤 {parseInt(product.users_count).toLocaleString()}</span>
+              )}
+            </div>
+            <span className="learn-more">
+              View Details <ExternalLinkIcon />
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render featured card with link
+  const renderFeaturedCard = (product) => {
+    const imageUrl = product.image_url || product.image || null;
+    const slug = product.slug || product.id;
+    
+    return (
+      <div 
+        className="featured-card" 
+        key={product.id}
+        onClick={() => handleProductClick(slug)}
+        role="link"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleProductClick(slug);
+          }
+        }}
+        aria-label={`View ${product.title || product.name} details`}
+      >
+        <div className="featured-card-image">
+          {imageUrl ? (
+            <img src={imageUrl} alt={product.title || product.name} loading="lazy" />
+          ) : (
+            <div className="featured-placeholder">🌟</div>
+          )}
+        </div>
+        <h4>{product.title || product.name}</h4>
+        <span className="featured-category">{product.category_name || product.category?.name}</span>
+      </div>
+    );
+  };
+
+  const renderSkeleton = () => (
+    <div className="product-skeleton">
+      <div className="skeleton-media"></div>
+      <div className="skeleton-line wide"></div>
+      <div className="skeleton-line"></div>
+      <div className="skeleton-line short"></div>
+    </div>
+  );
+
+  // Offline/Error state
+  if (!isOnline && !loading) {
+    return (
+      <div className="store-page">
+        <div className="store-shell">
+          <div className="empty-state">
+            <div className="empty-state-icon" style={{ fontSize: '48px' }}>📶</div>
+            <h3>No Internet Connection</h3>
+            <p>
+              Please check your internet connection and try again.
+            </p>
+            <button onClick={handleRetry}>
+              <RefreshIcon /> Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !loading && products.length === 0) {
+    return (
+      <div className="store-page">
+        <div className="store-shell">
+          <div className="empty-state">
+            <div className="empty-state-icon">⚠️</div>
+            <h3>Unable to Load Products</h3>
+            <p>{error}</p>
+            <button onClick={handleRetry}>
+              <RefreshIcon /> Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <main className="store-page">
-      <div className="container">
-        {/* Hero Banner */}
-        <section className="hero-banner">
-          <div className="hero-content">
-            <div className="hero-badge">✨ Digital Store</div>
-            <h2>{t('storeWelcome') || 'Discover Agricultural Digital Products'}</h2>
-            <p>{t('storeDescription') || 'Explore innovative digital solutions for modern agriculture'}</p>
-            <div className="hero-stats">
-              <span><strong>{pagination.totalItems || 0}</strong> Products</span>
-              <span><strong>{categories.length}</strong> Categories</span>
-              <span><strong>100%</strong> Free Access</span>
-            </div>
+    <div className="store-page">
+      <div className="store-shell">
+        {/* Hero Section */}
+        <section className="store-hero">
+          <div>
+            <span className="eyebrow">Kenya Agriculture Digital Catalogue</span>
+            <h1>Discover Agricultural Solutions</h1>
+            <p>
+              Explore Kenya's comprehensive digital catalogue of agricultural products, 
+              technologies, and services. Find verified solutions for your farming needs.
+            </p>
           </div>
-          <div className="hero-actions">
-            <a href="#products" className="btn-hero">
-              <FontAwesomeIcon icon={faArrowRight} /> {t('exploreAll') || 'Explore All'}
-            </a>
+          <div className="hero-summary">
+            <div>
+              <strong>{pagination.total || products.length || 0}</strong>
+              <span>Total Products</span>
+            </div>
+            <div>
+              <strong>{filterData.categories.length || 0}</strong>
+              <span>Categories</span>
+            </div>
+            <div>
+              <strong>{filterData.providers.length || 0}</strong>
+              <span>Providers</span>
+            </div>
           </div>
         </section>
 
         {/* Featured Products */}
-        {featuredApps.length > 0 && (
-          <div className="featured-section">
-            <div className="section-header">
-              <h3><FontAwesomeIcon icon={faStar} /> {t('featuredProducts') || 'Featured Products'}</h3>
-              <a href="#products">{t('seeAll') || 'See All'} <FontAwesomeIcon icon={faArrowRight} /></a>
+        {featuredProducts.length > 0 && !loading && (
+          <section className="featured-products">
+            <h2>Featured Products</h2>
+            <div className="featured-grid">
+              {featuredProducts.slice(0, 4).map(product => renderFeaturedCard(product))}
             </div>
-            <div className="featured-scroll">
-              {featuredApps.map(app => (
-                <Link to={`/product/${app.slug || app.productId}`} className="featured-card-link" key={app.id}>
-                  <div className="featured-card">
-                    <div className="featured-img" style={{ 
-                      background: app.screenshots?.[0]?.image_url 
-                        ? `url(${app.screenshots[0].image_url}) center/cover` 
-                        : (app.gradient || 'linear-gradient(135deg, var(--primary), var(--secondary))')
-                    }}>
-                      {!app.screenshots?.[0]?.image_url && <FontAwesomeIcon icon={app.icon || faStore} />}
-                      <span className="overlay">{app.badge || 'Featured'}</span>
-                    </div>
-                    <div className="featured-body">
-                      <h4>{app.title}</h4>
-                      <p>{app.short_description}</p>
-                      <span className="btn-link">
-                        {t('learnMore') || 'Learn More'} <FontAwesomeIcon icon={faArrowRight} />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
+          </section>
         )}
 
-        {/* Main Content Area */}
-        <div id="products" className="store-main">
-          {/* Mobile Filter Toggle */}
-          <div className="mobile-filter-toggle">
-            <button 
-              className="btn-filter-toggle"
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-            >
-              <FontAwesomeIcon icon={faFilter} />
-              Filters
-              {getActiveFiltersCount() > 0 && (
-                <span className="filter-count">{getActiveFiltersCount()}</span>
+        {/* Catalogue */}
+        <section className="catalogue" id="catalogue">
+          {/* Toolbar */}
+          <div className="catalogue-toolbar">
+            <div className="search-box">
+              <SearchIcon />
+              <input
+                type="text"
+                placeholder="Search products, technologies, providers..."
+                value={searchQuery}
+                onChange={handleSearch}
+                aria-label="Search products"
+                disabled={!isOnline}
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} aria-label="Clear search">
+                  <CloseIcon />
+                </button>
               )}
-            </button>
-            <div className="view-toggle">
-              <button 
-                className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                onClick={() => toggleViewMode('grid')}
-                aria-label="Grid view"
+            </div>
+            <div className="toolbar-actions">
+              <select 
+                value={activeFilters.category || ''} 
+                onChange={(e) => handleFilterChange('category', e.target.value)}
+                aria-label="Filter by category"
+                disabled={!isOnline || filterData.categories.length === 0}
               >
-                <FontAwesomeIcon icon={faThLarge} />
-              </button>
+                <option value="">All Categories</option>
+                {filterData.categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+              <div className="view-switcher">
+                <button 
+                  className={viewMode === 'grid' ? 'active' : ''}
+                  onClick={() => setViewMode('grid')}
+                  aria-label="Grid view"
+                >
+                  <GridIcon />
+                </button>
+                <button 
+                  className={viewMode === 'list' ? 'active' : ''}
+                  onClick={() => setViewMode('list')}
+                  aria-label="List view"
+                >
+                  <ListIcon />
+                </button>
+              </div>
               <button 
-                className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
-                onClick={() => toggleViewMode('list')}
-                aria-label="List view"
+                className="mobile-filter-button"
+                onClick={() => setFilterSidebarOpen(true)}
+                aria-label="Open filters"
+                disabled={!isOnline}
               >
-                <FontAwesomeIcon icon={faThList} />
+                <FilterIcon />
+                <span>{Object.keys(activeFilters).length}</span>
               </button>
             </div>
           </div>
 
-          <div className="store-layout">
-            {/* Filter Panel */}
-            <aside className={`filter-panel ${isFilterOpen ? 'open' : ''}`}>
-              <div className="filter-panel-header">
-                <h4>
-                  <FontAwesomeIcon icon={faSlidersH} />
+          {/* Active Filters with correct labels */}
+          {Object.keys(activeFilters).length > 0 && (
+            <div className="active-filter-row">
+              <span className="active-filter-label">Active Filters:</span>
+              {Object.entries(activeFilters).map(([key, value]) => {
+                const label = FILTER_LABELS[key] || key.replace(/_/g, ' ');
+                const displayValue = getFilterDisplayValue(key, value);
+                return (
+                  <span key={key} className="filter-chip">
+                    {label}: {displayValue}
+                    <button onClick={() => handleFilterChange(key, null)} aria-label={`Remove ${label} filter`}>
+                      <CloseIcon />
+                    </button>
+                  </span>
+                );
+              })}
+              <button className="clear-filter-link" onClick={handleClearFilters}>
+                Clear All
+              </button>
+            </div>
+          )}
+
+          {/* Layout */}
+          <div className="catalogue-layout">
+            {/* Filter Sidebar */}
+            <aside className={`filter-sidebar ${filterSidebarOpen ? 'open' : ''}`}>
+              <div className="filter-sidebar-header">
+                <h2>
+                  <FilterIcon />
                   Filters
-                </h4>
+                </h2>
                 <button 
-                  className="close-filter"
-                  onClick={() => setIsFilterOpen(false)}
+                  className="filter-close"
+                  onClick={() => setFilterSidebarOpen(false)}
+                  aria-label="Close filters"
                 >
-                  <FontAwesomeIcon icon={faTimes} />
+                  <CloseIcon />
                 </button>
               </div>
 
-              <div className="filter-group">
-                <h5>Categories</h5>
-                <div className="category-filters">
-                  <button
-                    className={`filter-option ${activeFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => handleFilterChange('all')}
-                  >
-                    <FontAwesomeIcon icon={faThLarge} />
-                    <span>All</span>
-                  </button>
-                  {categories.map(cat => (
-                    <button
-                      key={cat.id || cat.slug}
-                      className={`filter-option ${activeFilter === (cat.slug || cat.id) ? 'active' : ''}`}
-                      onClick={() => handleFilterChange(cat.slug || cat.id)}
-                    >
-                      <FontAwesomeIcon icon={cat.icon || faTag} />
-                      <span>{cat.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="filter-group">
-                <h5>Sort By</h5>
-                <select 
-                  className="sort-select"
-                  value={sortBy}
-                  onChange={handleSortChange}
-                >
-                  <option value="popular">Most Popular</option>
-                  <option value="rating">Top Rated</option>
-                  <option value="newest">Newest First</option>
-                  <option value="az">A to Z</option>
-                  <option value="za">Z to A</option>
-                </select>
-              </div>
-
-              <div className="filter-group">
-                <h5>Platform</h5>
-                <div className="platform-filters">
-                  <button
-                    className={`platform-option ${selectedPlatforms.includes('web') ? 'active' : ''}`}
-                    onClick={() => togglePlatform('web')}
-                  >
-                    <FontAwesomeIcon icon={faDesktop} />
-                    Web
-                  </button>
-                  <button
-                    className={`platform-option ${selectedPlatforms.includes('android') ? 'active' : ''}`}
-                    onClick={() => togglePlatform('android')}
-                  >
-                    <FontAwesomeIcon icon={faAndroid} />
-                    Android
-                  </button>
-                  <button
-                    className={`platform-option ${selectedPlatforms.includes('ios') ? 'active' : ''}`}
-                    onClick={() => togglePlatform('ios')}
-                  >
-                    <FontAwesomeIcon icon={faApple} />
-                    iOS
-                  </button>
-                </div>
-              </div>
-
-              <div className="filter-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={showOnlyFeatured}
-                    onChange={() => setShowOnlyFeatured(!showOnlyFeatured)}
-                  />
-                  <span>Show only featured</span>
-                </label>
-              </div>
-
-              <button 
-                className="btn-clear-filters"
-                onClick={clearAllFilters}
+              {/* Categories */}
+              <FilterAccordion
+                title="Categories"
+                isOpen={openAccordions.categories}
+                onToggle={() => toggleAccordion('categories')}
+                count={getActiveFilterCount(['category'])}
               >
-                <FontAwesomeIcon icon={faTimes} />
-                Clear all filters
+                {renderSelectFilter('category', 'Category', filterData.categories)}
+              </FilterAccordion>
+
+              {/* Value Chain Stages */}
+              {filterData.valueChainStages.length > 0 && (
+                <FilterAccordion
+                  title="Value Chain Stages"
+                  isOpen={openAccordions.valueChainStages}
+                  onToggle={() => toggleAccordion('valueChainStages')}
+                  count={getActiveFilterCount(['value_chain_stage'])}
+                >
+                  {renderSelectFilter('value_chain_stage', 'Stage', filterData.valueChainStages)}
+                </FilterAccordion>
+              )}
+
+              {/* Technologies */}
+              {filterData.technologies.length > 0 && (
+                <FilterAccordion
+                  title="Technologies"
+                  isOpen={openAccordions.technologies}
+                  onToggle={() => toggleAccordion('technologies')}
+                  count={getActiveFilterCount(['technology'])}
+                >
+                  {renderSelectFilter('technology', 'Technology', filterData.technologies)}
+                </FilterAccordion>
+              )}
+
+              {/* Delivery Channels */}
+              {filterData.deliveryChannels.length > 0 && (
+                <FilterAccordion
+                  title="Delivery Channels"
+                  isOpen={openAccordions.deliveryChannels}
+                  onToggle={() => toggleAccordion('deliveryChannels')}
+                  count={getActiveFilterCount(['delivery_channel'])}
+                >
+                  {renderSelectFilter('delivery_channel', 'Channel', filterData.deliveryChannels)}
+                </FilterAccordion>
+              )}
+
+              {/* Target Users */}
+              {filterData.targetUsers.length > 0 && (
+                <FilterAccordion
+                  title="Target Users"
+                  isOpen={openAccordions.targetUsers}
+                  onToggle={() => toggleAccordion('targetUsers')}
+                  count={getActiveFilterCount(['target_user'])}
+                >
+                  {renderSelectFilter('target_user', 'User Type', filterData.targetUsers)}
+                </FilterAccordion>
+              )}
+
+              {/* Subsectors */}
+              {filterData.subsectors.length > 0 && (
+                <FilterAccordion
+                  title="Subsectors"
+                  isOpen={openAccordions.subsectors}
+                  onToggle={() => toggleAccordion('subsectors')}
+                  count={getActiveFilterCount(['subsector'])}
+                >
+                  {renderSelectFilter('subsector', 'Subsector', filterData.subsectors)}
+                </FilterAccordion>
+              )}
+
+              {/* Value Chains */}
+              {filterData.valueChains.length > 0 && (
+                <FilterAccordion
+                  title="Value Chains"
+                  isOpen={openAccordions.valueChains}
+                  onToggle={() => toggleAccordion('valueChains')}
+                  count={getActiveFilterCount(['value_chain'])}
+                >
+                  {renderSelectFilter('value_chain', 'Value Chain', filterData.valueChains)}
+                </FilterAccordion>
+              )}
+
+              {/* Geographic Coverage */}
+              {filterData.geographicCoverage.length > 0 && (
+                <FilterAccordion
+                  title="Geographic Coverage"
+                  isOpen={openAccordions.geographicCoverage}
+                  onToggle={() => toggleAccordion('geographicCoverage')}
+                  count={getActiveFilterCount(['geographic_coverage'])}
+                >
+                  {renderSelectFilter('geographic_coverage', 'Region', filterData.geographicCoverage)}
+                </FilterAccordion>
+              )}
+
+              {/* Providers */}
+              {filterData.providers.length > 0 && (
+                <FilterAccordion
+                  title="Providers"
+                  isOpen={openAccordions.providers}
+                  onToggle={() => toggleAccordion('providers')}
+                  count={getActiveFilterCount(['provider'])}
+                >
+                  {renderSelectFilter('provider', 'Provider', filterData.providers)}
+                </FilterAccordion>
+              )}
+
+              {/* Additional Filters */}
+              <FilterAccordion
+                title="Additional Filters"
+                isOpen={openAccordions.additional}
+                onToggle={() => toggleAccordion('additional')}
+                count={getActiveFilterCount(['min_rating', 'is_verified', 'has_digital_content'])}
+              >
+                <div className="filter-field">
+                  <label htmlFor="filter-min-rating">Minimum Rating</label>
+                  <select
+                    id="filter-min-rating"
+                    value={activeFilters.min_rating || ''}
+                    onChange={(e) => handleFilterChange('min_rating', e.target.value)}
+                  >
+                    <option value="">Any Rating</option>
+                    <option value="1">⭐ 1+ Stars</option>
+                    <option value="2">⭐ 2+ Stars</option>
+                    <option value="3">⭐ 3+ Stars</option>
+                    <option value="4">⭐ 4+ Stars</option>
+                  </select>
+                </div>
+
+                <div className="filter-divider" />
+
+                <div className="filter-checks">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={activeFilters.is_verified || false}
+                      onChange={(e) => handleFilterChange('is_verified', e.target.checked || null)}
+                    />
+                    <span>Verified Only ✓</span>
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={activeFilters.has_digital_content || false}
+                      onChange={(e) => handleFilterChange('has_digital_content', e.target.checked || null)}
+                    />
+                    <span>Digital Content 📱</span>
+                  </label>
+                </div>
+              </FilterAccordion>
+
+              <button className="clear-filters-button" onClick={handleClearFilters}>
+                Reset All Filters
               </button>
             </aside>
 
             {/* Products Area */}
-            <section className="products-area">
-              {/* Toolbar */}
-              <div className="products-toolbar">
-                <div className="toolbar-left">
-                  <div className="search-box">
-                    <FontAwesomeIcon icon={faSearch} className="search-icon" />
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      placeholder={t('searchProducts') || 'Search products...'}
-                      value={searchQuery}
-                      onChange={handleSearch}
-                      aria-label={t('searchProducts') || 'Search products'}
-                    />
-                    {searchQuery && (
-                      <button className="clear-search" onClick={() => setSearchQuery('')}>
-                        <FontAwesomeIcon icon={faTimes} />
-                      </button>
-                    )}
-                  </div>
+            <div className="products-area">
+              <div className="results-heading">
+                <div>
+                  <h2>
+                    {loading ? 'Loading...' : `${pagination.total || products.length} Products`}
+                  </h2>
+                  {!loading && products.length > 0 && (
+                    <p>
+                      Showing {products.length} of {pagination.total || products.length}
+                      {searchQuery && ` for "${searchQuery}"`}
+                    </p>
+                  )}
+                  {!loading && products.length === 0 && (
+                    <p>No products found</p>
+                  )}
                 </div>
-                <div className="toolbar-right">
-                  <div className="result-count">
-                    <span className="count">{filteredApps.length}</span>
-                    <span className="label">products</span>
-                    {pagination.totalItems > 0 && (
-                      <span className="total">of {pagination.totalItems}</span>
-                    )}
-                  </div>
-                  <div className="view-toggle desktop">
-                    <button 
-                      className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                      onClick={() => toggleViewMode('grid')}
-                      aria-label="Grid view"
-                    >
-                      <FontAwesomeIcon icon={faThLarge} />
-                    </button>
-                    <button 
-                      className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
-                      onClick={() => toggleViewMode('list')}
-                      aria-label="List view"
-                    >
-                      <FontAwesomeIcon icon={faThList} />
-                    </button>
-                  </div>
+                <div className="endpoint-status">
+                  <span className={`status-dot ${!isOnline ? 'offline' : ''}`} />
+                  {isOnline ? 'Live' : 'Offline'}
                 </div>
               </div>
 
-              {/* Active Filters */}
-              {(activeFilter !== 'all' || searchQuery || showOnlyFeatured || selectedPlatforms.length > 0) && (
-                <div className="active-filters">
-                  <span className="active-filters-label">Active filters:</span>
-                  {activeFilter !== 'all' && (
-                    <span className="filter-tag" onClick={() => handleFilterChange('all')}>
-                      {categories.find(c => c.slug === activeFilter || c.id === activeFilter)?.name || activeFilter}
-                      <FontAwesomeIcon icon={faTimes} />
-                    </span>
-                  )}
-                  {searchQuery && (
-                    <span className="filter-tag" onClick={() => setSearchQuery('')}>
-                      "{searchQuery}"
-                      <FontAwesomeIcon icon={faTimes} />
-                    </span>
-                  )}
-                  {showOnlyFeatured && (
-                    <span className="filter-tag" onClick={() => setShowOnlyFeatured(false)}>
-                      Featured
-                      <FontAwesomeIcon icon={faTimes} />
-                    </span>
-                  )}
-                  {selectedPlatforms.map(platform => (
-                    <span key={platform} className="filter-tag" onClick={() => togglePlatform(platform)}>
-                      {platform.charAt(0).toUpperCase() + platform.slice(1)}
-                      <FontAwesomeIcon icon={faTimes} />
-                    </span>
-                  ))}
-                  <button className="clear-all-filters" onClick={clearAllFilters}>
-                    Clear all
+              {error && (
+                <div className="catalogue-alert">
+                  <span>⚠️</span>
+                  <span>{error}</span>
+                  <button onClick={handleRetry}>
+                    Retry
                   </button>
                 </div>
               )}
 
-              {/* Products Grid/List */}
-              {filteredApps.length > 0 ? (
+              {loading ? (
                 <div className={`products-container ${viewMode}`}>
-                  {filteredApps.map((app, index) => {
-                    const categoryLabel = getCategoryLabel(app)
-                    const productSlug = app.slug || app.id
-                    const screenshotUrl = getScreenshotUrl(app)
-                    const hasImage = hasScreenshots(app) && !imageErrors[app.id]
-                    
-                    return (
-                      <Link to={`/product/${productSlug}`} className="product-card-link" key={app.id}>
-                        <div className={`product-card ${viewMode}`} style={{ animationDelay: `${index * 0.05}s` }}>
-                          <div className="product-card-image">
-                            {hasImage ? (
-                              <img 
-                                src={screenshotUrl} 
-                                alt={app.screenshots[0]?.alt_text || app.title}
-                                onError={() => handleImageError(app.id)}
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className={`product-icon ${getIconBgClass(app.icon_bg || 'green')}`}>
-                                <FontAwesomeIcon icon={app.icon || faSeedling} />
-                              </div>
-                            )}
-                            {app.is_featured && (
-                              <span className="featured-badge">Featured</span>
-                            )}
-                            {app.badges && app.badges.length > 0 && (
-                              <div className="product-badges">
-                                {app.badges.slice(0, 2).map((badge, idx) => (
-                                  <span key={idx} className={`badge ${getBadgeColor(badge)}`}>
-                                    {badge}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className="product-card-body">
-                            <div className="product-card-header">
-                              <h4>{app.title}</h4>
-                              <span className="product-category">{categoryLabel}</span>
-                            </div>
-                            <p className="product-description">{app.short_description}</p>
-                            <div className="product-card-footer">
-                              <div className="product-meta">
-                                <span className="rating">
-                                  {renderStars(app.rating)} {app.rating || '0.0'}
-                                </span>
-                                <span className="downloads">
-                                  <FontAwesomeIcon icon={faDownload} /> {app.downloads_count || '0'}
-                                </span>
-                              </div>
-                              <span className="learn-more">
-                                Learn More <FontAwesomeIcon icon={faArrowRight} />
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    )
-                  })}
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i}>{renderSkeleton()}</div>
+                  ))}
+                </div>
+              ) : products.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">🔍</div>
+                  <h3>No products found</h3>
+                  <p>
+                    {searchQuery 
+                      ? `No results found for "${searchQuery}". Try adjusting your search or filters.` 
+                      : 'No products match your current filters. Try adjusting your criteria.'}
+                  </p>
+                  <button onClick={handleClearFilters}>Clear All Filters</button>
                 </div>
               ) : (
-                <div className="no-results">
-                  <div className="no-results-icon">
-                    <FontAwesomeIcon icon={faSearch} />
+                <>
+                  <div className={`products-container ${viewMode}`}>
+                    {products.map(product => renderProductCard(product))}
                   </div>
-                  <h3>No products found</h3>
-                  <p>Try adjusting your filters or search terms</p>
-                  <button className="btn-primary" onClick={clearAllFilters}>
-                    Clear all filters
-                  </button>
-                </div>
-              )}
 
-              {/* Pagination */}
-              {pagination.totalPages > 1 && (
-                <div className="pagination">
-                  <div className="pagination-info">
-                    Showing {(pagination.currentPage - 1) * pagination.pageSize + 1} - {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalItems)} of {pagination.totalItems} products
-                  </div>
-                  <div className="pagination-controls">
-                    <button
-                      className="pagination-btn"
-                      onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={!pagination.previous || loading}
-                    >
-                      <FontAwesomeIcon icon={faChevronLeft} /> Previous
-                    </button>
-                    <div className="pagination-pages">
-                      {Array.from({ length: Math.min(pagination.totalPages, 7) }, (_, i) => {
-                        let pageNum
-                        if (pagination.totalPages <= 7) {
-                          pageNum = i + 1
-                        } else if (pagination.currentPage <= 4) {
-                          pageNum = i + 1
-                        } else if (pagination.currentPage >= pagination.totalPages - 3) {
-                          pageNum = pagination.totalPages - 6 + i
-                        } else {
-                          pageNum = pagination.currentPage - 3 + i
-                        }
-                        return (
-                          <button
-                            key={pageNum}
-                            className={`pagination-page ${pagination.currentPage === pageNum ? 'active' : ''}`}
-                            onClick={() => handlePageChange(pageNum)}
-                          >
-                            {pageNum}
-                          </button>
-                        )
-                      })}
+                  {/* Pagination */}
+                  {pagination.totalPages > 1 && (
+                    <div className="pagination">
+                      <span className="pagination-summary">
+                        Page {pagination.page} of {pagination.totalPages}
+                      </span>
+                      <div className="pagination-controls">
+                        <button
+                          onClick={() => handlePageChange(pagination.page - 1)}
+                          disabled={pagination.page <= 1 || loading}
+                          aria-label="Previous page"
+                        >
+                          ← Previous
+                        </button>
+                        <span>{pagination.page}</span>
+                        <button
+                          onClick={() => handlePageChange(pagination.page + 1)}
+                          disabled={pagination.page >= pagination.totalPages || loading}
+                          aria-label="Next page"
+                        >
+                          Next →
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      className="pagination-btn"
-                      onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={!pagination.next || loading}
-                    >
-                      Next <FontAwesomeIcon icon={faChevronRight} />
-                    </button>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
-            </section>
+            </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="store-bottom">
-          <span>{t('copyright') || '© 2026 KALRO. All rights reserved.'}</span>
-          <div className="bottom-links">
-            <a href="#">{t('privacy') || 'Privacy'}</a>
-            <a href="#">{t('terms') || 'Terms'}</a>
-            <a href="#">{t('about') || 'About'}</a>
-            <a href="#">{t('support') || 'Support'}</a>
-          </div>
-        </div>
+        </section>
       </div>
 
-      {/* Filter Overlay */}
-      {isFilterOpen && (
-        <div className="filter-overlay" onClick={() => setIsFilterOpen(false)} />
+      {/* Mobile Filter Overlay */}
+      {filterSidebarOpen && (
+        <button 
+          className="filter-overlay"
+          onClick={() => setFilterSidebarOpen(false)}
+          aria-label="Close filters"
+        />
       )}
-    </main>
-  )
-}
+    </div>
+  );
+};
 
-export default Store
+export default Store;
