@@ -19,7 +19,7 @@
   isolation: isolate;
   padding: 72px 0 78px;
   background:
-    linear-gradient(105deg, rgba(247, 252, 249, .98) 0%, rgba(240, 249, 244, .94) 52%, rgba(235, 248, 241, .90) 100%),
+    linear-gradient(105deg, rgba(247, 252, 249, .70) 0%, rgba(240, 249, 244, .55) 52%, rgba(235, 248, 241, .40) 100%),
     var(--hero-background-image, none);
   background-size: cover;
   background-position: center;

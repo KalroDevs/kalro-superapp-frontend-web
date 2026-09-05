@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApi } from '../context/ApiContext';
+import { useLanguage } from '../context/LanguageContext';
 import './Store.css';
 
 // Icons
@@ -48,22 +49,23 @@ const FilterAccordion = ({ title, children, isOpen, onToggle, count }) => (
 
 // Filter label mapping for display
 const FILTER_LABELS = {
-  category: 'Category',
-  value_chain_stage: 'Value Chain Stage',
-  technology: 'Technology',
-  delivery_channel: 'Delivery Channel',
-  target_user: 'Target User',
-  subsector: 'Subsector',
-  value_chain: 'Value Chain',
-  geographic_coverage: 'Region',
-  provider: 'Provider',
-  min_rating: 'Minimum Rating',
-  is_verified: 'Verified',
-  has_digital_content: 'Digital Content'
+  category: 'category',
+  value_chain_stage: 'value_chain_stage',
+  technology: 'technology',
+  delivery_channel: 'delivery_channel',
+  target_user: 'target_user',
+  subsector: 'subsector',
+  value_chain: 'value_chain',
+  geographic_coverage: 'geographic_coverage',
+  provider: 'provider',
+  min_rating: 'min_rating',
+  is_verified: 'is_verified',
+  has_digital_content: 'has_digital_content'
 };
 
 const Store = () => {
   const { store } = useApi();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   
   // State
@@ -373,8 +375,8 @@ const Store = () => {
       const ratings = { '1': '1+ Stars', '2': '2+ Stars', '3': '3+ Stars', '4': '4+ Stars' };
       return ratings[value] || value;
     }
-    if (key === 'is_verified') return value ? 'Verified' : 'Not Verified';
-    if (key === 'has_digital_content') return value ? 'Digital Content' : 'Physical Only';
+    if (key === 'is_verified') return value ? t('storeVerified') : t('storeNotVerified');
+    if (key === 'has_digital_content') return value ? t('storeFilterDigitalContent') : t('storeFilterPhysicalOnly');
     
     return value;
   };
@@ -411,16 +413,16 @@ const Store = () => {
     // Map API fields to display fields
     const imageUrl = product.image_url || product.image || null;
     const productName = product.title || product.name || 'Product';
-    const categoryName = product.category_name || product.category?.name || 'Uncategorized';
+    const categoryName = product.category_name || product.category?.name || t('storeUncategorized');
     const providerName = product.provider_name || product.provider?.name || '';
-    const description = product.short_description || product.description || 'No description available';
+    const description = product.short_description || product.description || t('storeNoDescription');
     const rating = parseFloat(product.rating) || 0;
     const reviewCount = parseInt(product.reviews_count) || 0;
     const downloadCount = parseInt(product.downloads_count) || parseInt(product.downloads) || 0;
     const isVerified = product.is_verified || false;
     const isFeatured = product.is_featured || false;
     const badges = product.badges || [];
-    const productType = product.product_type || 'product';
+    const productType = product.product_type || t('storeProductType');
     const slug = product.slug || product.id;
 
     return (
@@ -462,10 +464,10 @@ const Store = () => {
           )}
           <div className="card-badges">
             {isVerified && (
-              <span className="verified-badge">✓ Verified</span>
+              <span className="verified-badge">✓ {t('storeVerified')}</span>
             )}
             {isFeatured && (
-              <span>⭐ Featured</span>
+              <span>⭐ {t('storeFeatured')}</span>
             )}
             {badges.length > 0 && badges.slice(0, 2).map((badge, index) => (
               <span key={index}>{badge}</span>
@@ -479,7 +481,7 @@ const Store = () => {
           </div>
           <h3>{productName}</h3>
           {providerName && (
-            <p className="provider-name">by {providerName}</p>
+            <p className="provider-name">{t('storeByProvider', { provider: providerName })}</p>
           )}
           <p className="product-description">{description}</p>
           <div className="product-card-footer">
@@ -495,7 +497,7 @@ const Store = () => {
                 </span>
               )}
               {reviewCount > 0 && (
-                <span>({reviewCount} reviews)</span>
+                <span>({reviewCount} {t('storeReviews')})</span>
               )}
               {downloadCount > 0 && (
                 <span>⬇ {downloadCount.toLocaleString()}</span>
@@ -505,7 +507,7 @@ const Store = () => {
               )}
             </div>
             <span className="learn-more">
-              View Details <ExternalLinkIcon />
+              {t('storeViewDetails')} <ExternalLinkIcon />
             </span>
           </div>
         </div>
@@ -562,12 +564,12 @@ const Store = () => {
         <div className="store-shell">
           <div className="empty-state">
             <div className="empty-state-icon" style={{ fontSize: '48px' }}>📶</div>
-            <h3>No Internet Connection</h3>
+            <h3>{t('storeNoInternet')}</h3>
             <p>
-              Please check your internet connection and try again.
+              {t('storeOfflineMessage')}
             </p>
             <button onClick={handleRetry}>
-              <RefreshIcon /> Try Again
+              <RefreshIcon /> {t('storeTryAgain')}
             </button>
           </div>
         </div>
@@ -581,10 +583,10 @@ const Store = () => {
         <div className="store-shell">
           <div className="empty-state">
             <div className="empty-state-icon">⚠️</div>
-            <h3>Unable to Load Products</h3>
+            <h3>{t('storeLoadError')}</h3>
             <p>{error}</p>
             <button onClick={handleRetry}>
-              <RefreshIcon /> Retry
+              <RefreshIcon /> {t('storeRetry')}
             </button>
           </div>
         </div>
@@ -598,38 +600,27 @@ const Store = () => {
         {/* Hero Section */}
         <section className="store-hero">
           <div>
-            <span className="eyebrow">Kenya Agriculture Digital Catalogue</span>
-            <h1>Discover Agricultural Solutions</h1>
+            <span className="eyebrow">{t('storeHeroEyebrow')}</span>
+            <h1>{t('storeHeroTitle')}</h1>
             <p>
-              Explore Kenya's comprehensive digital catalogue of agricultural products, 
-              technologies, and services. Find verified solutions for your farming needs.
+              {t('storeHeroDescription')}
             </p>
           </div>
           <div className="hero-summary">
             <div>
               <strong>{pagination.total || products.length || 0}</strong>
-              <span>Total Products</span>
+              <span>{t('storeTotalProducts')}</span>
             </div>
             <div>
               <strong>{filterData.categories.length || 0}</strong>
-              <span>Categories</span>
+              <span>{t('storeCategories')}</span>
             </div>
             <div>
               <strong>{filterData.providers.length || 0}</strong>
-              <span>Providers</span>
+              <span>{t('storeProviders')}</span>
             </div>
           </div>
-        </section>
-
-        {/* Featured Products */}
-        {featuredProducts.length > 0 && !loading && (
-          <section className="featured-products">
-            <h2>Featured Products</h2>
-            <div className="featured-grid">
-              {featuredProducts.slice(0, 4).map(product => renderFeaturedCard(product))}
-            </div>
-          </section>
-        )}
+        </section>       
 
         {/* Catalogue */}
         <section className="catalogue" id="catalogue">
@@ -639,14 +630,14 @@ const Store = () => {
               <SearchIcon />
               <input
                 type="text"
-                placeholder="Search products, technologies, providers..."
+                placeholder={t('storeSearchPlaceholder')}
                 value={searchQuery}
                 onChange={handleSearch}
                 aria-label="Search products"
                 disabled={!isOnline}
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} aria-label="Clear search">
+                <button onClick={() => setSearchQuery('')} aria-label={t('storeClearSearch')}>
                   <CloseIcon />
                 </button>
               )}
@@ -658,7 +649,7 @@ const Store = () => {
                 aria-label="Filter by category"
                 disabled={!isOnline || filterData.categories.length === 0}
               >
-                <option value="">All Categories</option>
+                <option value="">{t('storeAllCategories')}</option>
                 {filterData.categories.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
@@ -667,14 +658,14 @@ const Store = () => {
                 <button 
                   className={viewMode === 'grid' ? 'active' : ''}
                   onClick={() => setViewMode('grid')}
-                  aria-label="Grid view"
+                  aria-label={t('storeGrid')}
                 >
                   <GridIcon />
                 </button>
                 <button 
                   className={viewMode === 'list' ? 'active' : ''}
                   onClick={() => setViewMode('list')}
-                  aria-label="List view"
+                  aria-label={t('storeList')}
                 >
                   <ListIcon />
                 </button>
@@ -682,7 +673,7 @@ const Store = () => {
               <button 
                 className="mobile-filter-button"
                 onClick={() => setFilterSidebarOpen(true)}
-                aria-label="Open filters"
+                aria-label={t('storeFilters')}
                 disabled={!isOnline}
               >
                 <FilterIcon />
@@ -694,9 +685,9 @@ const Store = () => {
           {/* Active Filters with correct labels */}
           {Object.keys(activeFilters).length > 0 && (
             <div className="active-filter-row">
-              <span className="active-filter-label">Active Filters:</span>
+              <span className="active-filter-label">{t('storeActiveFilters')}</span>
               {Object.entries(activeFilters).map(([key, value]) => {
-                const label = FILTER_LABELS[key] || key.replace(/_/g, ' ');
+                const label = t(`storeFilterLabel${key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`) || key.replace(/_/g, ' ');
                 const displayValue = getFilterDisplayValue(key, value);
                 return (
                   <span key={key} className="filter-chip">
@@ -708,7 +699,7 @@ const Store = () => {
                 );
               })}
               <button className="clear-filter-link" onClick={handleClearFilters}>
-                Clear All
+                {t('storeClearAll')}
               </button>
             </div>
           )}
@@ -720,7 +711,7 @@ const Store = () => {
               <div className="filter-sidebar-header">
                 <h2>
                   <FilterIcon />
-                  Filters
+                  {t('storeFilters')}
                 </h2>
                 <button 
                   className="filter-close"
@@ -733,129 +724,129 @@ const Store = () => {
 
               {/* Categories */}
               <FilterAccordion
-                title="Categories"
+                title={t('storeFilterLabelCategory')}
                 isOpen={openAccordions.categories}
                 onToggle={() => toggleAccordion('categories')}
                 count={getActiveFilterCount(['category'])}
               >
-                {renderSelectFilter('category', 'Category', filterData.categories)}
+                {renderSelectFilter('category', t('storeFilterLabelCategory'), filterData.categories)}
               </FilterAccordion>
 
               {/* Value Chain Stages */}
               {filterData.valueChainStages.length > 0 && (
                 <FilterAccordion
-                  title="Value Chain Stages"
+                  title={t('storeFilterLabelValueChainStage')}
                   isOpen={openAccordions.valueChainStages}
                   onToggle={() => toggleAccordion('valueChainStages')}
                   count={getActiveFilterCount(['value_chain_stage'])}
                 >
-                  {renderSelectFilter('value_chain_stage', 'Stage', filterData.valueChainStages)}
+                  {renderSelectFilter('value_chain_stage', t('storeFilterLabelStage'), filterData.valueChainStages)}
                 </FilterAccordion>
               )}
 
               {/* Technologies */}
               {filterData.technologies.length > 0 && (
                 <FilterAccordion
-                  title="Technologies"
+                  title={t('storeFilterLabelTechnologies')}
                   isOpen={openAccordions.technologies}
                   onToggle={() => toggleAccordion('technologies')}
                   count={getActiveFilterCount(['technology'])}
                 >
-                  {renderSelectFilter('technology', 'Technology', filterData.technologies)}
+                  {renderSelectFilter('technology', t('storeFilterLabelTechnology'), filterData.technologies)}
                 </FilterAccordion>
               )}
 
               {/* Delivery Channels */}
               {filterData.deliveryChannels.length > 0 && (
                 <FilterAccordion
-                  title="Delivery Channels"
+                  title={t('storeFilterLabelDeliveryChannels')}
                   isOpen={openAccordions.deliveryChannels}
                   onToggle={() => toggleAccordion('deliveryChannels')}
                   count={getActiveFilterCount(['delivery_channel'])}
                 >
-                  {renderSelectFilter('delivery_channel', 'Channel', filterData.deliveryChannels)}
+                  {renderSelectFilter('delivery_channel', t('storeFilterLabelChannel'), filterData.deliveryChannels)}
                 </FilterAccordion>
               )}
 
               {/* Target Users */}
               {filterData.targetUsers.length > 0 && (
                 <FilterAccordion
-                  title="Target Users"
+                  title={t('storeFilterLabelTargetUsers')}
                   isOpen={openAccordions.targetUsers}
                   onToggle={() => toggleAccordion('targetUsers')}
                   count={getActiveFilterCount(['target_user'])}
                 >
-                  {renderSelectFilter('target_user', 'User Type', filterData.targetUsers)}
+                  {renderSelectFilter('target_user', t('storeFilterLabelUserType'), filterData.targetUsers)}
                 </FilterAccordion>
               )}
 
               {/* Subsectors */}
               {filterData.subsectors.length > 0 && (
                 <FilterAccordion
-                  title="Subsectors"
+                  title={t('storeFilterLabelSubsectors')}
                   isOpen={openAccordions.subsectors}
                   onToggle={() => toggleAccordion('subsectors')}
                   count={getActiveFilterCount(['subsector'])}
                 >
-                  {renderSelectFilter('subsector', 'Subsector', filterData.subsectors)}
+                  {renderSelectFilter('subsector', t('storeFilterLabelSubsector'), filterData.subsectors)}
                 </FilterAccordion>
               )}
 
               {/* Value Chains */}
               {filterData.valueChains.length > 0 && (
                 <FilterAccordion
-                  title="Value Chains"
+                  title={t('storeFilterLabelValueChains')}
                   isOpen={openAccordions.valueChains}
                   onToggle={() => toggleAccordion('valueChains')}
                   count={getActiveFilterCount(['value_chain'])}
                 >
-                  {renderSelectFilter('value_chain', 'Value Chain', filterData.valueChains)}
+                  {renderSelectFilter('value_chain', t('storeFilterLabelValueChain'), filterData.valueChains)}
                 </FilterAccordion>
               )}
 
               {/* Geographic Coverage */}
               {filterData.geographicCoverage.length > 0 && (
                 <FilterAccordion
-                  title="Geographic Coverage"
+                  title={t('storeFilterLabelGeographicCoverage')}
                   isOpen={openAccordions.geographicCoverage}
                   onToggle={() => toggleAccordion('geographicCoverage')}
                   count={getActiveFilterCount(['geographic_coverage'])}
                 >
-                  {renderSelectFilter('geographic_coverage', 'Region', filterData.geographicCoverage)}
+                  {renderSelectFilter('geographic_coverage', t('storeFilterLabelRegion'), filterData.geographicCoverage)}
                 </FilterAccordion>
               )}
 
               {/* Providers */}
               {filterData.providers.length > 0 && (
                 <FilterAccordion
-                  title="Providers"
+                  title={t('storeFilterLabelProviders')}
                   isOpen={openAccordions.providers}
                   onToggle={() => toggleAccordion('providers')}
                   count={getActiveFilterCount(['provider'])}
                 >
-                  {renderSelectFilter('provider', 'Provider', filterData.providers)}
+                  {renderSelectFilter('provider', t('storeFilterLabelProvider'), filterData.providers)}
                 </FilterAccordion>
               )}
 
               {/* Additional Filters */}
               <FilterAccordion
-                title="Additional Filters"
+                title={t('storeFilterLabelAdditional')}
                 isOpen={openAccordions.additional}
                 onToggle={() => toggleAccordion('additional')}
                 count={getActiveFilterCount(['min_rating', 'is_verified', 'has_digital_content'])}
               >
                 <div className="filter-field">
-                  <label htmlFor="filter-min-rating">Minimum Rating</label>
+                  <label htmlFor="filter-min-rating">{t('storeFilterMinRating')}</label>
                   <select
                     id="filter-min-rating"
                     value={activeFilters.min_rating || ''}
                     onChange={(e) => handleFilterChange('min_rating', e.target.value)}
                   >
-                    <option value="">Any Rating</option>
-                    <option value="1">⭐ 1+ Stars</option>
-                    <option value="2">⭐ 2+ Stars</option>
-                    <option value="3">⭐ 3+ Stars</option>
-                    <option value="4">⭐ 4+ Stars</option>
+                    <option value="">{t('storeFilterAnyRating')}</option>
+                    <option value="1">⭐ 1+ {t('storeFilterStars')}</option>
+                    <option value="2">⭐ 2+ {t('storeFilterStars')}</option>
+                    <option value="3">⭐ 3+ {t('storeFilterStars')}</option>
+                    <option value="4">⭐ 4+ {t('storeFilterStars')}</option>
                   </select>
                 </div>
 
@@ -868,7 +859,7 @@ const Store = () => {
                       checked={activeFilters.is_verified || false}
                       onChange={(e) => handleFilterChange('is_verified', e.target.checked || null)}
                     />
-                    <span>Verified Only ✓</span>
+                    <span>{t('storeFilterVerifiedOnly')}</span>
                   </label>
                   <label>
                     <input
@@ -876,13 +867,13 @@ const Store = () => {
                       checked={activeFilters.has_digital_content || false}
                       onChange={(e) => handleFilterChange('has_digital_content', e.target.checked || null)}
                     />
-                    <span>Digital Content 📱</span>
+                    <span>{t('storeFilterDigitalContent')}</span>
                   </label>
                 </div>
               </FilterAccordion>
 
               <button className="clear-filters-button" onClick={handleClearFilters}>
-                Reset All Filters
+                {t('storeResetFilters')}
               </button>
             </aside>
 
@@ -891,21 +882,23 @@ const Store = () => {
               <div className="results-heading">
                 <div>
                   <h2>
-                    {loading ? 'Loading...' : `${pagination.total || products.length} Products`}
+                    {loading ? t('storeLoading') : t('storeProductsCount', { count: pagination.total || products.length })}
                   </h2>
                   {!loading && products.length > 0 && (
                     <p>
-                      Showing {products.length} of {pagination.total || products.length}
-                      {searchQuery && ` for "${searchQuery}"`}
+                      {searchQuery 
+                        ? t('storeShowingSearch', { showing: products.length, total: pagination.total || products.length, search: searchQuery })
+                        : t('storeShowingProducts', { showing: products.length, total: pagination.total || products.length })
+                      }
                     </p>
                   )}
                   {!loading && products.length === 0 && (
-                    <p>No products found</p>
+                    <p>{t('storeNoProductsFound')}</p>
                   )}
                 </div>
                 <div className="endpoint-status">
                   <span className={`status-dot ${!isOnline ? 'offline' : ''}`} />
-                  {isOnline ? 'Live' : 'Offline'}
+                  {isOnline ? t('storeLive') : t('storeOffline')}
                 </div>
               </div>
 
@@ -914,7 +907,7 @@ const Store = () => {
                   <span>⚠️</span>
                   <span>{error}</span>
                   <button onClick={handleRetry}>
-                    Retry
+                    {t('storeRetry')}
                   </button>
                 </div>
               )}
@@ -928,13 +921,14 @@ const Store = () => {
               ) : products.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">🔍</div>
-                  <h3>No products found</h3>
+                  <h3>{t('storeNoProductsFound')}</h3>
                   <p>
                     {searchQuery 
-                      ? `No results found for "${searchQuery}". Try adjusting your search or filters.` 
-                      : 'No products match your current filters. Try adjusting your criteria.'}
+                      ? t('storeNoSearchResults', { search: searchQuery })
+                      : t('storeNoProductsMessage')
+                    }
                   </p>
-                  <button onClick={handleClearFilters}>Clear All Filters</button>
+                  <button onClick={handleClearFilters}>{t('storeClearAll')}</button>
                 </div>
               ) : (
                 <>
@@ -946,7 +940,7 @@ const Store = () => {
                   {pagination.totalPages > 1 && (
                     <div className="pagination">
                       <span className="pagination-summary">
-                        Page {pagination.page} of {pagination.totalPages}
+                        {t('storePageOf', { current: pagination.page, total: pagination.totalPages })}
                       </span>
                       <div className="pagination-controls">
                         <button
@@ -954,7 +948,7 @@ const Store = () => {
                           disabled={pagination.page <= 1 || loading}
                           aria-label="Previous page"
                         >
-                          ← Previous
+                          ← {t('storePagePrevious')}
                         </button>
                         <span>{pagination.page}</span>
                         <button
@@ -962,7 +956,7 @@ const Store = () => {
                           disabled={pagination.page >= pagination.totalPages || loading}
                           aria-label="Next page"
                         >
-                          Next →
+                          {t('storePageNext')} →
                         </button>
                       </div>
                     </div>

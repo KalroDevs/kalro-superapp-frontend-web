@@ -139,7 +139,6 @@ const Hero = () => {
           <div className="hero-future-layout">
             <div className="hero-future-copy">
               <div className="hero-kicker">
-                
                 {/* <span>{t('tagLine') || 'Kenya Agriculture Digital Catalogue'}</span>
                 <span className="hero-live-dot" aria-hidden="true" /> */}
               </div>
@@ -148,25 +147,23 @@ const Hero = () => {
 
               <div className="hero-intelligence-pill">
                 <FontAwesomeIcon icon={faStar} />
-                <span>Discover</span>
+                <span>{t('heroIntelligencePill')}</span>
                 <strong>{text || 'Digital Agriculture'}</strong>
               </div>
 
               <h1>
-                Kenya's digital gateway to
-                <span className="hero-gradient-text"> smarter agriculture.</span>
+                {t('heroMainTitle')}
+                <span className="hero-gradient-text"> {t('heroGradientText')}</span>
               </h1>
 
               <p className="hero-lead">
-                Discover trusted digital products, data platforms, advisory services,
-                agricultural technologies and interoperable solutions built for farmers,
-                researchers, counties, agribusinesses and institutions.
+                {t('heroLead')}
               </p>
 
               <div className="hero-trust-row" aria-label="Catalogue characteristics">
-                <span><FontAwesomeIcon icon={faShieldHalved} /> Trusted solutions</span>
-                <span><FontAwesomeIcon icon={faDatabase} /> Data-enabled</span>
-                <span><FontAwesomeIcon icon={faBolt} /> Built for action</span>
+                <span><FontAwesomeIcon icon={faShieldHalved} /> {t('heroTrustTrusted')}</span>
+                <span><FontAwesomeIcon icon={faDatabase} /> {t('heroTrustData')}</span>
+                <span><FontAwesomeIcon icon={faBolt} /> {t('heroTrustAction')}</span>
               </div>
 
               <div className="hero-search-shell">
@@ -181,7 +178,7 @@ const Hero = () => {
                       type="search"
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
-                      placeholder="Search products, technologies, services, advisories..."
+                      placeholder={t('heroSearchPlaceholder')}
                       className="hero-search-input"
                       aria-label="Search digital agriculture catalogue"
                       onClick={openSearch}
@@ -198,7 +195,7 @@ const Hero = () => {
                     </button>
 
                     <button type="submit" className="search-submit-btn" onClick={openSearch}>
-                      <span>Search catalogue</span>
+                      <span>{t('heroSearchButton')}</span>
                       <FontAwesomeIcon icon={faArrowRight} />
                     </button>
                   </div>
@@ -237,7 +234,7 @@ const Hero = () => {
                 </div>
 
                 <Link to="/?page=store" className="hero-explore-link">
-                  Explore full catalogue
+                  {t('heroExploreLink')}
                   <FontAwesomeIcon icon={faArrowRight} />
                 </Link>
               </div>
@@ -246,55 +243,7 @@ const Hero = () => {
             <div className="hero-visual" aria-hidden="true">
               <div className="hero-visual-halo" />
 
-              {/* <div className="hero-console">
-                <div className="hero-console-topbar">
-                  <span className="console-dot" />
-                  <span className="console-dot" />
-                  <span className="console-dot" />
-                  <span className="console-label">Agriculture Intelligence Layer</span>
-                </div>
-
-                <div className="hero-console-body">
-                  <div className="hero-console-map">
-                    <div className="map-ring map-ring-one" />
-                    <div className="map-ring map-ring-two" />
-                    <div className="map-core">
-                      <FontAwesomeIcon icon={faLeaf} />
-                    </div>
-                    <span className="map-node node-one" />
-                    <span className="map-node node-two" />
-                    <span className="map-node node-three" />
-                  </div>
-
-                  <div className="hero-console-stats">
-                    <div className="console-stat">
-                      <small>Discover</small>
-                      <strong>Digital Products/Services</strong>
-                      <span>Digital public services</span>
-                    </div>
-                    <div className="console-stat">
-                      <small>Connect</small>
-                      <strong>Data + APIs</strong>
-                      <span>Interoperable agriculture</span>
-                    </div>
-                    <div className="console-stat">
-                      <small>Decide</small>
-                      <strong>Insights</strong>
-                      <span>Evidence-led action</span>
-                    </div>
-                  </div>
-                </div>
-              </div> */}
-
-              {/* <div className="floating-chip floating-chip-one">
-                <FontAwesomeIcon icon={faCloudSun} /> Climate intelligence
-              </div>
-              <div className="floating-chip floating-chip-two">
-                <FontAwesomeIcon icon={faRobot} /> AI advisory
-              </div>
-              <div className="floating-chip floating-chip-three">
-                <FontAwesomeIcon icon={faChartLine} /> Market intelligence
-              </div> */}
+             
             </div>
           </div>
         </div>

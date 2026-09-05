@@ -10,9 +10,11 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApi } from '../context/ApiContext'
+import { useLanguage } from '../context/LanguageContext'
 
 const FeaturedProducts = () => {
   const { store } = useApi()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [featuredProducts, setFeaturedProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -44,17 +46,16 @@ const FeaturedProducts = () => {
         <div className="featured-products-heading">
           <div>
             <span className="section-eyebrow">
-              <FontAwesomeIcon icon={faStar} /> Curated for discovery
+              <FontAwesomeIcon icon={faStar} /> {t('featuredEyebrow')}
             </span>
-            <h2 id="featured-products-title">Featured Digital Products</h2>
+            <h2 id="featured-products-title">{t('featuredTitle')}</h2>
             <p>
-              Explore selected digital agriculture solutions from Kenya's growing
-              ecosystem of public, research and technology platforms.
+              {t('featuredDescription')}
             </p>
           </div>
 
           <Link to="/?page=store" className="featured-view-all">
-            View all products <FontAwesomeIcon icon={faArrowRight} />
+            {t('featuredViewAll')} <FontAwesomeIcon icon={faArrowRight} />
           </Link>
         </div>
 
@@ -96,19 +97,19 @@ const FeaturedProducts = () => {
                     <div className="featured-image-overlay" />
 
                     <span className="featured-type-pill">
-                      {product.product_type || 'Digital product'}
+                      {product.product_type || t('featuredProductType')}
                     </span>
 
                     {product.is_verified && (
                       <span className="featured-verified">
-                        <FontAwesomeIcon icon={faCheckCircle} /> Verified
+                        <FontAwesomeIcon icon={faCheckCircle} /> {t('featuredVerified')}
                       </span>
                     )}
                   </div>
 
                   <div className="featured-card-body">
                     <span className="featured-category">
-                      {product.category_name || 'Digital Agriculture'}
+                      {product.category_name || t('featuredCategoryDefault')}
                     </span>
                     <h3>{product.title}</h3>
                     <p>
@@ -133,7 +134,7 @@ const FeaturedProducts = () => {
 
         {!loading && featuredProducts.length === 0 && (
           <div className="featured-products-empty">
-            No featured products are currently available.
+            {t('featuredEmpty')}
           </div>
         )}
       </div>
