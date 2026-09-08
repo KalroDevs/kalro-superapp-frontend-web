@@ -882,13 +882,13 @@ const Store = () => {
               <div className="results-heading">
                 <div>
                   <h2>
-                    {loading ? t('storeLoading') : t('storeProductsCount', { count: pagination.total || products.length })}
+                    {loading ? t('storeLoading') : `${pagination.total || products.length} ${t('storeProducts')}`}
                   </h2>
                   {!loading && products.length > 0 && (
                     <p>
                       {searchQuery 
-                        ? t('storeShowingSearch', { showing: products.length, total: pagination.total || products.length, search: searchQuery })
-                        : t('storeShowingProducts', { showing: products.length, total: pagination.total || products.length })
+                        ? `${t('storeShowing')} ${products.length} ${t('storeOf')} ${pagination.total || products.length} ${t('storeFor')} "${searchQuery}"`
+                        : `${t('storeShowing')} ${products.length} ${t('storeOf')} ${pagination.total || products.length}`
                       }
                     </p>
                   )}
@@ -940,7 +940,7 @@ const Store = () => {
                   {pagination.totalPages > 1 && (
                     <div className="pagination">
                       <span className="pagination-summary">
-                        {t('storePageOf', { current: pagination.page, total: pagination.totalPages })}
+                        {t('storePageOf')} {pagination.page} {t('storeOf')} {pagination.totalPages}
                       </span>
                       <div className="pagination-controls">
                         <button

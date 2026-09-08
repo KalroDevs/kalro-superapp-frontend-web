@@ -133,7 +133,7 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       if (!slug) {
         if (isMounted) {
-          setError('No product slug provided')
+          setError(t('productNoSlug'))
           setLoading(false)
         }
         return
@@ -145,7 +145,7 @@ const ProductDetail = () => {
       try {
         const result = await fetchWithErrorHandling(
           () => store.getProductBySlug(slug),
-          'Failed to load product details'
+          t('productLoadError')
         )
 
         if (!isMounted) return
@@ -159,7 +159,7 @@ const ProductDetail = () => {
 
           const reviewsResult = await fetchWithErrorHandling(
             () => store.getProductReviews(slug),
-            'Failed to load reviews'
+            t('productReviewsError')
           )
 
           if (isMounted && reviewsResult?.success) {
@@ -171,7 +171,7 @@ const ProductDetail = () => {
 
           const relatedResult = await fetchWithErrorHandling(
             () => store.getRelatedProducts(slug),
-            'Failed to load related products'
+            t('productRelatedError')
           )
 
           if (isMounted && relatedResult?.success) {
@@ -181,11 +181,11 @@ const ProductDetail = () => {
             setRelatedProducts(relatedData)
           }
         } else {
-          setError(result?.error || 'Product not found')
+          setError(result?.error || t('productNotFound'))
         }
       } catch (err) {
         if (isMounted) {
-          setError('Unable to load product details. Please refresh the page.')
+          setError(t('productLoadErrorMessage'))
         }
       } finally {
         if (isMounted) {
@@ -199,12 +199,12 @@ const ProductDetail = () => {
     return () => {
       isMounted = false
     }
-  }, [slug, fetchWithErrorHandling, store])
+  }, [slug, fetchWithErrorHandling, store, t])
 
   // Handlers
   const handleSave = async () => {
     if (!isAuthenticated) {
-      showToast('Please login to save favorites', 'error')
+      showToast(t('productSaveLoginRequired'), 'error')
       return
     }
 
@@ -215,31 +215,31 @@ const ProductDetail = () => {
       await store.toggleFavorite(slug)
       localStorage.setItem(`kalro_saved_${product.id}`, newState.toString())
       showToast(
-        newState ? 'Product saved to favorites' : 'Removed from favorites',
+        newState ? t('productSaved') : t('productRemoved'),
         newState ? 'success' : 'info'
       )
     } catch (error) {
-      showToast('Failed to update favorites', 'error')
+      showToast(t('productSaveError'), 'error')
       setIsSaved(!newState)
     }
   }
 
   const handleLaunch = async () => {
     setIsLaunching(true)
-    setLaunchStatus({ type: 'loading', message: 'Preparing to launch...', show: true })
+    setLaunchStatus({ type: 'loading', message: t('productLaunchPreparing'), show: true })
 
     try {
       await store.trackDownload(slug)
 
       await new Promise((res) => safeSetTimeout(res, 1500))
-      setLaunchStatus({ type: 'loading', message: 'Verifying access...', show: true })
+      setLaunchStatus({ type: 'loading', message: t('productLaunchVerifying'), show: true })
       
       await new Promise((res) => safeSetTimeout(res, 1000))
-      setLaunchStatus({ type: 'loading', message: 'Launching application...', show: true })
+      setLaunchStatus({ type: 'loading', message: t('productLaunchStarting'), show: true })
       
       await new Promise((res) => safeSetTimeout(res, 1000))
-      setLaunchStatus({ type: 'success', message: 'App launched successfully!', show: true })
-      showToast('🚀 Application launched successfully!', 'success')
+      setLaunchStatus({ type: 'success', message: t('productLaunchSuccess'), show: true })
+      showToast(t('productLaunchSuccessToast'), 'success')
 
       if (product?.launch_url) {
         window.open(product.launch_url, '_blank')
@@ -250,8 +250,8 @@ const ProductDetail = () => {
         setIsLaunching(false)
       }, 3000)
     } catch (error) {
-      setLaunchStatus({ type: 'error', message: 'Unable to launch the app. Please try again.', show: true })
-      showToast('Failed to launch app. Please try again.', 'error')
+      setLaunchStatus({ type: 'error', message: t('productLaunchError'), show: true })
+      showToast(t('productLaunchErrorMessage'), 'error')
       setIsLaunching(false)
     }
   }
@@ -260,17 +260,17 @@ const ProductDetail = () => {
     e.preventDefault()
 
     if (!isAuthenticated) {
-      showToast('Please login to submit a review', 'error')
+      showToast(t('productReviewLoginRequired'), 'error')
       return
     }
 
     if (!newComment.name.trim() || !newComment.email.trim() || !newComment.text.trim()) {
-      showToast('Please fill in all fields', 'error')
+      showToast(t('productReviewFillFields'), 'error')
       return
     }
 
     if (selectedRating === 0) {
-      showToast('Please select a rating', 'error')
+      showToast(t('productReviewSelectRating'), 'error')
       return
     }
 
@@ -296,9 +296,9 @@ const ProductDetail = () => {
       setNewComment({ name: '', email: '', text: '' })
       setSelectedRating(0)
       setHoverRating(0)
-      showToast('✅ Your review has been submitted!', 'success')
+      showToast(t('productReviewSubmitted'), 'success')
     } catch (error) {
-      showToast('Failed to submit review. Please try again.', 'error')
+      showToast(t('productReviewSubmitError'), 'error')
     }
   }
 
@@ -359,7 +359,7 @@ const ProductDetail = () => {
         <div className="container">
           <div className="loading-spinner">
             <FontAwesomeIcon icon={faSpinner} spin size="3x" />
-            <p>Loading product...</p>
+            <p>{t('productLoading')}</p>
           </div>
         </div>
       </main>
@@ -371,10 +371,10 @@ const ProductDetail = () => {
       <main className="product-detail-page">
         <div className="container">
           <div className="not-found">
-            <h2>Product not found</h2>
-            <p>{error || "The product you're looking for doesn't exist."}</p>
+            <h2>{t('productNotFoundTitle')}</h2>
+            <p>{error || t('productNotFoundMessage')}</p>
             <Link to="/?page=store" className="btn primary" style={{ marginTop: '24px' }}>
-              <FontAwesomeIcon icon={faArrowRight} /> Browse All Products
+              <FontAwesomeIcon icon={faArrowRight} /> {t('productBrowseAll')}
             </Link>
           </div>
         </div>
@@ -388,12 +388,12 @@ const ProductDetail = () => {
         <div className="container">
           {/* Breadcrumb */}
           <nav className="breadcrumb" aria-label="Breadcrumb">
-            <Link to="/">Home</Link>
+            <Link to="/">{t('productHome')}</Link>
             <span>/</span>
-            <Link to="/?page=store">App Store</Link>
+            <Link to="/?page=store">{t('productAppStore')}</Link>
             <span>/</span>
             <Link to={`/store/category/${product.category_slug || product.category}`}>
-              {product.category_name || 'Category'}
+              {product.category_name || t('productCategory')}
             </Link>
             <span>/</span>
             <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{product.title}</span>
@@ -413,15 +413,15 @@ const ProductDetail = () => {
                   ) : (
                     <div className="gallery-placeholder">
                       <FontAwesomeIcon icon={faImage} size="4x" />
-                      <p>No screenshots available</p>
+                      <p>{t('productNoScreenshots')}</p>
                     </div>
                   )}
                   {screenshots.length > 1 && (
                     <>
-                      <button className="gallery-nav gallery-nav-left" onClick={prevImage} aria-label="Previous image">
+                      <button className="gallery-nav gallery-nav-left" onClick={prevImage} aria-label={t('productPreviousImage')}>
                         <FontAwesomeIcon icon={faChevronLeft} />
                       </button>
-                      <button className="gallery-nav gallery-nav-right" onClick={nextImage} aria-label="Next image">
+                      <button className="gallery-nav gallery-nav-right" onClick={nextImage} aria-label={t('productNextImage')}>
                         <FontAwesomeIcon icon={faChevronRight} />
                       </button>
                     </>
@@ -460,14 +460,14 @@ const ProductDetail = () => {
 
             <div className="product-info">
               <span className="category-tag">
-                <FontAwesomeIcon icon={getCategoryIcon(product.category_name)} /> {product.category_name || 'Product'}
+                <FontAwesomeIcon icon={getCategoryIcon(product.category_name)} /> {product.category_name || t('productCategory')}
               </span>
               <h1>{product.title}</h1>
 
               <div className="rating">
                 <span className="stars">{renderStars(product.rating || 0)}</span>
                 <span>{product.rating || 0}</span>
-                <span className="count">({product.reviews_count || 0} reviews)</span>
+                <span className="count">({product.reviews_count || 0} {t('productReviews')})</span>
               </div>
 
               {product.badges && product.badges.length > 0 && (
@@ -493,68 +493,68 @@ const ProductDetail = () => {
               <div className="meta-grid">
                 <div className="meta-item">
                   <FontAwesomeIcon icon={faDownload} />
-                  <span><strong>Downloads:</strong> {product.downloads_count || product.downloads || '0'}</span>
+                  <span><strong>{t('productDownloads')}:</strong> {product.downloads_count || product.downloads || '0'}</span>
                 </div>
                 <div className="meta-item">
                   <FontAwesomeIcon icon={faUsers} />
-                  <span><strong>Users:</strong> {product.users_count || '0'}</span>
+                  <span><strong>{t('productUsers')}:</strong> {product.users_count || '0'}</span>
                 </div>
                 {product.version && (
                   <div className="meta-item">
                     <FontAwesomeIcon icon={faTag} />
-                    <span><strong>Version:</strong> {product.version}</span>
+                    <span><strong>{t('productVersion')}:</strong> {product.version}</span>
                   </div>
                 )}
                 {product.purpose && (
                   <div className="meta-item">
                     <FontAwesomeIcon icon={faBullseye} />
-                    <span><strong>Purpose:</strong> {product.purpose}</span>
+                    <span><strong>{t('productPurpose')}:</strong> {product.purpose}</span>
                   </div>
                 )}
                 {product.is_featured && (
                   <div className="meta-item">
                     <FontAwesomeIcon icon={faStarSolid} />
-                    <span><strong>Status:</strong> Featured</span>
+                    <span><strong>{t('productStatus')}:</strong> {t('productFeatured')}</span>
                   </div>
                 )}
                 {product.is_verified && (
                   <div className="meta-item">
                     <FontAwesomeIcon icon={faShieldAlt} />
-                    <span><strong>Status:</strong> Verified</span>
+                    <span><strong>{t('productStatus')}:</strong> {t('productVerified')}</span>
                   </div>
                 )}
                 {product.access_model && (
                   <div className="meta-item">
                     <FontAwesomeIcon icon={product.access_model === 'free' ? faCheckCircle : faLock} />
-                    <span><strong>Access:</strong> {product.access_model === 'free' ? 'Free' : 'Paid'}</span>
+                    <span><strong>{t('productAccess')}:</strong> {product.access_model === 'free' ? t('productFree') : t('productPaid')}</span>
                   </div>
                 )}
                 {product.maturity_level && (
                   <div className="meta-item">
                     <FontAwesomeIcon icon={faClock} />
-                    <span><strong>Maturity:</strong> {product.maturity_level}</span>
+                    <span><strong>{t('productMaturity')}:</strong> {product.maturity_level}</span>
                   </div>
                 )}
                 <div className="meta-item">
                   <FontAwesomeIcon icon={faCalendarAlt} />
-                  <span><strong>Updated:</strong> {new Date(product.last_updated || product.updated_at).toLocaleDateString()}</span>
+                  <span><strong>{t('productUpdated')}:</strong> {new Date(product.last_updated || product.updated_at).toLocaleDateString()}</span>
                 </div>
                 {product.languages && (
                   <div className="meta-item">
                     <FontAwesomeIcon icon={faLanguage} />
-                    <span><strong>Languages:</strong> {product.languages}</span>
+                    <span><strong>{t('productLanguages')}:</strong> {product.languages}</span>
                   </div>
                 )}
                 {product.security && (
                   <div className="meta-item">
                     <FontAwesomeIcon icon={faShieldVirus} />
-                    <span><strong>Security:</strong> {product.security}</span>
+                    <span><strong>{t('productSecurity')}:</strong> {product.security}</span>
                   </div>
                 )}
                 {product.data_owner && (
                   <div className="meta-item">
                     <FontAwesomeIcon icon={faBuilding} />
-                    <span><strong>Data Owner:</strong> {product.data_owner}</span>
+                    <span><strong>{t('productDataOwner')}:</strong> {product.data_owner}</span>
                   </div>
                 )}
               </div>
@@ -562,7 +562,7 @@ const ProductDetail = () => {
               {/* Platforms */}
               {product.platforms && product.platforms.length > 0 && (
                 <div className="platform-badges">
-                  <span className="platform-label"><FontAwesomeIcon icon={faDesktop} /> Platforms:</span>
+                  <span className="platform-label"><FontAwesomeIcon icon={faDesktop} /> {t('productPlatforms')}:</span>
                   {product.platforms.map((platform, index) => (
                     <span key={index} className="platform-badge available">
                       <FontAwesomeIcon icon={getPlatformIcon(platform)} />
@@ -594,7 +594,7 @@ const ProductDetail = () => {
                     )}
                     {product.provider_detail.website && (
                       <a href={product.provider_detail.website} target="_blank" rel="noopener noreferrer" className="provider-link">
-                        <FontAwesomeIcon icon={faGlobe} /> Visit Website
+                        <FontAwesomeIcon icon={faGlobe} /> {t('productVisitWebsite')}
                       </a>
                     )}
                   </div>
@@ -604,31 +604,31 @@ const ProductDetail = () => {
               {/* App Links */}
               {(product.website_url || product.launch_url || product.documentation_url || product.support_email) && (
                 <div className="app-links">
-                  <h4>Available on</h4>
+                  <h4>{t('productAvailableOn')}</h4>
                   <div className="app-links-grid">
                     {product.website_url && (
                       <a href={product.website_url} target="_blank" rel="noopener noreferrer" className="app-link web">
-                        <FontAwesomeIcon icon={faGlobe} /> Website
+                        <FontAwesomeIcon icon={faGlobe} /> {t('productWebsite')}
                       </a>
                     )}
                     {product.launch_url && (
                       <a href={product.launch_url} target="_blank" rel="noopener noreferrer" className="app-link play">
-                        <FontAwesomeIcon icon={faRocket} /> Launch App
+                        <FontAwesomeIcon icon={faRocket} /> {t('productLaunchApp')}
                       </a>
                     )}
                     {product.documentation_url && (
                       <a href={product.documentation_url} target="_blank" rel="noopener noreferrer" className="app-link docs">
-                        <FontAwesomeIcon icon={faBook} /> Documentation
+                        <FontAwesomeIcon icon={faBook} /> {t('productDocumentation')}
                       </a>
                     )}
                     {product.api_documentation_url && (
                       <a href={product.api_documentation_url} target="_blank" rel="noopener noreferrer" className="app-link docs">
-                        <FontAwesomeIcon icon={faLink} /> API Docs
+                        <FontAwesomeIcon icon={faLink} /> {t('productAPIDocs')}
                       </a>
                     )}
                     {product.support_email && (
                       <a href={`mailto:${product.support_email}`} className="app-link support">
-                        <FontAwesomeIcon icon={faHeadset} /> Support
+                        <FontAwesomeIcon icon={faHeadset} /> {t('productSupport')}
                       </a>
                     )}
                   </div>
@@ -643,11 +643,11 @@ const ProductDetail = () => {
                   disabled={isLaunching}
                 >
                   <FontAwesomeIcon icon={isLaunching ? faSpinner : faRocket} spin={isLaunching} />
-                  {isLaunching ? 'Launching...' : 'Launch app'}
+                  {isLaunching ? t('productLaunching') : t('productLaunchApp')}
                 </button>
                 <button className={`btn outline btn-large ${isSaved ? 'saved' : ''}`} onClick={handleSave}>
                   <FontAwesomeIcon icon={faHeart} style={{ color: isSaved ? '#c62828' : 'inherit' }} />
-                  {isSaved ? 'Saved' : 'Save'}
+                  {isSaved ? t('productSaved') : t('productSave')}
                 </button>
               </div>
 
@@ -670,25 +670,25 @@ const ProductDetail = () => {
               className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
               onClick={() => setActiveTab('overview')}
             >
-              <FontAwesomeIcon icon={faInfoCircle} /> Overview
+              <FontAwesomeIcon icon={faInfoCircle} /> {t('productTabOverview')}
             </button>
             <button 
               className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`}
               onClick={() => setActiveTab('details')}
             >
-              <FontAwesomeIcon icon={faLayerGroup} /> Details
+              <FontAwesomeIcon icon={faLayerGroup} /> {t('productTabDetails')}
             </button>
             <button 
               className={`tab-btn ${activeTab === 'technical' ? 'active' : ''}`}
               onClick={() => setActiveTab('technical')}
             >
-              <FontAwesomeIcon icon={faTools} /> Technical
+              <FontAwesomeIcon icon={faTools} /> {t('productTabTechnical')}
             </button>
             <button 
               className={`tab-btn ${activeTab === 'reviews' ? 'active' : ''}`}
               onClick={() => setActiveTab('reviews')}
             >
-              <FontAwesomeIcon icon={faComments} /> Reviews ({comments.length})
+              <FontAwesomeIcon icon={faComments} /> {t('productTabReviews')} ({comments.length})
             </button>
           </div>
 
@@ -702,7 +702,7 @@ const ProductDetail = () => {
                   <section className="features-section">
                     <h2>
                       <FontAwesomeIcon icon={faCheckCircle} style={{ color: 'var(--primary)', marginRight: '12px' }} />
-                      Key Features
+                      {t('productKeyFeatures')}
                     </h2>
                     <div className="features-grid">
                       {product.features.map((feature, index) => (
@@ -710,7 +710,7 @@ const ProductDetail = () => {
                           <div className="icon">
                             <FontAwesomeIcon icon={faCheckCircle} />
                           </div>
-                          <h4>Feature {index + 1}</h4>
+                          <h4>{t('productFeature')} {index + 1}</h4>
                           <p>{feature}</p>
                         </div>
                       ))}
@@ -723,7 +723,7 @@ const ProductDetail = () => {
                   <section className="info-section">
                     <h3>
                       <FontAwesomeIcon icon={faSeedling} style={{ color: 'var(--primary)', marginRight: '10px' }} />
-                      Value Chains
+                      {t('productValueChains')}
                     </h3>
                     <div className="info-grid">
                       {product.value_chains_detail.map((vc) => (
@@ -747,7 +747,7 @@ const ProductDetail = () => {
                   <section className="info-section">
                     <h3>
                       <FontAwesomeIcon icon={faUserCheck} style={{ color: 'var(--primary)', marginRight: '10px' }} />
-                      Target Users
+                      {t('productTargetUsers')}
                     </h3>
                     <div className="info-grid">
                       {product.target_users_detail.map((user) => (
@@ -775,7 +775,7 @@ const ProductDetail = () => {
                   <section className="info-section">
                     <h3>
                       <FontAwesomeIcon icon={faLayerGroup} style={{ color: 'var(--primary)', marginRight: '10px' }} />
-                      Subsectors
+                      {t('productSubsectors')}
                     </h3>
                     <div className="info-grid">
                       {product.subsectors_detail.map((sub) => (
@@ -802,7 +802,7 @@ const ProductDetail = () => {
                   <section className="info-section">
                     <h3>
                       <FontAwesomeIcon icon={faMapMarkerAlt} style={{ color: 'var(--primary)', marginRight: '10px' }} />
-                      Geographic Coverage
+                      {t('productGeographicCoverage')}
                     </h3>
                     <div className="info-grid">
                       {product.geographic_coverage_detail.map((geo) => (
@@ -826,7 +826,7 @@ const ProductDetail = () => {
                   <section className="info-section">
                     <h3>
                       <FontAwesomeIcon icon={faStore} style={{ color: 'var(--primary)', marginRight: '10px' }} />
-                      Secondary Categories
+                      {t('productSecondaryCategories')}
                     </h3>
                     <div className="info-grid">
                       {product.secondary_categories_detail.map((cat) => (
@@ -855,7 +855,7 @@ const ProductDetail = () => {
                   <section className="info-section">
                     <h3>
                       <FontAwesomeIcon icon={faTools} style={{ color: 'var(--primary)', marginRight: '10px' }} />
-                      Technologies Used
+                      {t('productTechnologiesUsed')}
                     </h3>
                     <div className="info-grid">
                       {product.technologies_detail.map((tech) => (
@@ -878,7 +878,7 @@ const ProductDetail = () => {
                   <section className="info-section">
                     <h3>
                       <FontAwesomeIcon icon={faMobile} style={{ color: 'var(--primary)', marginRight: '10px' }} />
-                      Delivery Channels
+                      {t('productDeliveryChannels')}
                     </h3>
                     <div className="info-grid">
                       {product.delivery_channels_detail.map((channel) => (
@@ -907,7 +907,7 @@ const ProductDetail = () => {
                   <section className="info-section">
                     <h3>
                       <FontAwesomeIcon icon={faChartLine} style={{ color: 'var(--primary)', marginRight: '10px' }} />
-                      Value Chain Stages
+                      {t('productValueChainStages')}
                     </h3>
                     <div className="info-grid">
                       {product.value_chain_stages_detail.map((stage) => (
@@ -930,7 +930,7 @@ const ProductDetail = () => {
                   <section className="specs-section">
                     <h2>
                       <FontAwesomeIcon icon={faTools} style={{ color: 'var(--primary)', marginRight: '12px' }} />
-                      Technical Specifications
+                      {t('productTechnicalSpecs')}
                     </h2>
                     <div className="specs-grid">
                       {product.specs.map((spec, index) => {
@@ -953,7 +953,7 @@ const ProductDetail = () => {
                   <section className="info-section">
                     <h3>
                       <FontAwesomeIcon icon={faDatabase} style={{ color: 'var(--primary)', marginRight: '10px' }} />
-                      Data Formats
+                      {t('productDataFormats')}
                     </h3>
                     <div className="info-grid">
                       {product.data_formats.map((format, index) => (
@@ -976,52 +976,52 @@ const ProductDetail = () => {
             {activeTab === 'reviews' && (
               <section className="comments-section" id="comments">
                 <h2>
-                  <FontAwesomeIcon icon={faComments} style={{ color: 'var(--primary)', marginRight: '12px' }} /> User Reviews
+                  <FontAwesomeIcon icon={faComments} style={{ color: 'var(--primary)', marginRight: '12px' }} /> {t('productUserReviews')}
                 </h2>
-                <p className="comment-subtitle">Share your experience with {product.title}</p>
+                <p className="comment-subtitle">{t('productShareExperience', { title: product.title })}</p>
 
                 <form className="comment-form" onSubmit={handleSubmitComment}>
                   <div className="form-row">
                     <div className="form-group">
-                      <label htmlFor="commentName">Full name</label>
+                      <label htmlFor="commentName">{t('productFullName')}</label>
                       <input
                         type="text"
                         id="commentName"
-                        placeholder="e.g. John Kamau"
+                        placeholder={t('productFullNamePlaceholder')}
                         value={newComment.name}
                         onChange={(e) => setNewComment((prev) => ({ ...prev, name: e.target.value }))}
                       />
                     </div>
                     <div className="form-group">
-                      <label htmlFor="commentEmail">Email address</label>
+                      <label htmlFor="commentEmail">{t('productEmailAddress')}</label>
                       <input
                         type="email"
                         id="commentEmail"
-                        placeholder="e.g. john@example.com"
+                        placeholder={t('productEmailPlaceholder')}
                         value={newComment.email}
                         onChange={(e) => setNewComment((prev) => ({ ...prev, email: e.target.value }))}
                       />
                     </div>
                   </div>
                   <div className="form-group" style={{ marginBottom: '12px' }}>
-                    <label>Your rating</label>
+                    <label>{t('productYourRating')}</label>
                     <div className="rating-input">{renderStars(5, true)}</div>
                     <span style={{ fontSize: '13px', color: 'var(--muted)' }}>
-                      {selectedRating > 0 ? `Rating: ${selectedRating} / 5` : 'Select a rating'}
+                      {selectedRating > 0 ? `${t('productRating')}: ${selectedRating} / 5` : t('productSelectRating')}
                     </span>
                   </div>
                   <div className="form-group">
-                    <label htmlFor="commentText">Your review</label>
+                    <label htmlFor="commentText">{t('productYourReview')}</label>
                     <textarea
                       id="commentText"
-                      placeholder="What did you think of the app? What features did you find most useful?"
+                      placeholder={t('productReviewPlaceholder')}
                       value={newComment.text}
                       onChange={(e) => setNewComment((prev) => ({ ...prev, text: e.target.value }))}
                     />
                   </div>
                   <div className="form-actions">
                     <button type="submit" className="btn primary">
-                      <FontAwesomeIcon icon={faPaperPlane} /> Submit review
+                      <FontAwesomeIcon icon={faPaperPlane} /> {t('productSubmitReview')}
                     </button>
                     <button
                       type="button"
@@ -1030,10 +1030,10 @@ const ProductDetail = () => {
                         setNewComment({ name: '', email: '', text: '' })
                         setSelectedRating(0)
                         setHoverRating(0)
-                        showToast('Review cleared', 'info')
+                        showToast(t('productReviewCleared'), 'info')
                       }}
                     >
-                      Cancel
+                      {t('productCancel')}
                     </button>
                   </div>
                 </form>
@@ -1043,14 +1043,14 @@ const ProductDetail = () => {
                     comments.map((comment) => {
                       const dateStr = comment.created_at
                         ? new Date(comment.created_at).toLocaleDateString()
-                        : 'Recently'
+                        : t('productRecently')
 
                       return (
                         <div className="comment-item" key={comment.id || `${comment.author}-${Math.random()}`}>
                           <div className="comment-header">
                             <span className="comment-author">
                               <FontAwesomeIcon icon={faUserCircle} style={{ color: 'var(--primary)', marginRight: '6px' }} />
-                              {comment.user?.first_name || comment.author || 'Anonymous'}
+                              {comment.user?.first_name || comment.author || t('productAnonymous')}
                             </span>
                             <span className="comment-date">{dateStr}</span>
                           </div>
@@ -1058,14 +1058,14 @@ const ProductDetail = () => {
                           <p className="comment-text">{comment.text || comment.comment}</p>
                           <div className="comment-actions">
                             <button type="button"><FontAwesomeIcon icon={faThumbsUp} /> {comment.likes || 0}</button>
-                            <button type="button"><FontAwesomeIcon icon={faReply} /> Reply</button>
+                            <button type="button"><FontAwesomeIcon icon={faReply} /> {t('productReply')}</button>
                           </div>
                         </div>
                       )
                     })
                   ) : (
                     <div className="no-comments">
-                      <p>No reviews yet. Be the first to review this product!</p>
+                      <p>{t('productNoReviews')}</p>
                     </div>
                   )}
                 </div>
@@ -1110,8 +1110,8 @@ const ProductDetail = () => {
                 ></iframe>
               </div>
               <div className="video-modal-info">
-                <h3>{product.title} - Demo</h3>
-                <p>Watch this video to see how {product.title} works in action.</p>
+                <h3>{product.title} - {t('productDemo')}</h3>
+                <p>{t('productVideoDescription', { title: product.title })}</p>
               </div>
             </div>
           </div>
