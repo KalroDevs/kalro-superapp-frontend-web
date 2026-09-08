@@ -230,6 +230,7 @@ const translations = {
     'storeOf': 'of',
     'storeFor': 'for',    
     'storePageOf': 'Page',
+    'by': 'by',
     
     // Categories
     'categoryAll': 'All',
@@ -677,6 +678,7 @@ const translations = {
     'storeOf': 'kati ya',
     'storeFor': 'kwa',             
     'storePageOf': 'Ukurasa',
+    'by': 'na',
     
     // Categories
     'categoryAll': 'Zote',

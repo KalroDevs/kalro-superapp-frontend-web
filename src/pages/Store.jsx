@@ -481,7 +481,7 @@ const Store = () => {
           </div>
           <h3>{productName}</h3>
           {providerName && (
-            <p className="provider-name">{t('storeByProvider', { provider: providerName })}</p>
+            <p className="provider-name"> {t('by')} {providerName}</p>
           )}
           <p className="product-description">{description}</p>
           <div className="product-card-footer">
